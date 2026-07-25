@@ -161,7 +161,7 @@
     </n-grid>
 
     <n-card :title="t('dataQuery.rawData')" :bordered="false">
-      <n-data-table :columns="dataColumns" :data="tableData" :bordered="false" size="small" :pagination="pagination" :loading="loading" remote>
+      <n-data-table :columns="dataColumns" :data="tableData" :bordered="false" size="small" :pagination="pagination" :loading="loading" remote @update:sorter="onTableSort">
         <template #empty>
           <n-empty v-if="!loading" :description="queryResult.length ? t('common.noData') : t('dataQuery.pleaseQuery')" style="padding: 24px 0" />
         </template>
@@ -576,17 +576,28 @@ const chartOption = computed(() => {
   }
 })
 
-const dataColumns = [
-  { title: t('dataQuery.colTime'), key: 'time', width: 200, render: (r: any) => formatDateTime(r.time || r._time) },  // FIXED: 原问题-中文硬编码
-  { title: t('dataQuery.colValue'), key: 'value', render: (r: any) => {  // FIXED: 原问题-中文硬编码
-    const v = r.value ?? r._value
-    if (v == null) return '-'
-    // FIXED: bool 值直接显示 true/false，避免 toFixed 崩溃
-    if (typeof v === 'boolean') return v ? 'true' : 'false'
-    return typeof v === 'number' ? v.toFixed(4) : v
-  }},
-  { title: t('dataQuery.colQuality'), key: 'quality', width: 80, render: (r: any) => r.quality || '-' },  // FIXED: 原问题-中文硬编码
-]
+const dataColumns = computed(() => [
+  {
+    title: t('dataQuery.colTime'),
+    key: 'time',
+    width: 200,
+    sorter: true,
+    sortOrder: tableSortOrder.value === 'desc' ? 'descend' : 'ascend',
+    render: (r: any) => formatDateTime(r.time || r._time),
+  },
+  {
+    title: t('dataQuery.colValue'),
+    key: 'value',
+    render: (r: any) => {
+      const v = r.value ?? r._value
+      if (v == null) return '-'
+      // FIXED: bool 值直接显示 true/false，避免 toFixed 崩溃
+      if (typeof v === 'boolean') return v ? 'true' : 'false'
+      return typeof v === 'number' ? v.toFixed(4) : v
+    },
+  },
+  { title: t('dataQuery.colQuality'), key: 'quality', width: 80, render: (r: any) => r.quality || '-' },
+])
 
 const pagination = reactive({
   page: 1,
@@ -602,14 +613,25 @@ const pagination = reactive({
 // 可能导致无限更新循环。改为在 handleQuery 成功后设置 itemCount。
 // FIXED: 原问题-[...queryResult.value].reverse().slice(start, end) 对大数据集（最大 100000 条）
 // 每次分页变化都执行 O(n) 全量复制+反转，造成卡顿。改为通过索引从尾部切片，避免全量复制。
+// sortOrder: 'desc' = 最新数据在顶部（默认），'asc' = 最旧数据在顶部
+const tableSortOrder = ref<'desc' | 'asc'>('desc')
+
 const tableData = computed(() => {
   const total = queryResult.value.length
   if (!total) return []
   // 倒序展示：最新数据在前。通过索引计算从尾部切片，避免全量反转
   const start = total - pagination.page * pagination.pageSize
   const end = start + pagination.pageSize
-  return queryResult.value.slice(Math.max(0, start), end)
+  const pageData = queryResult.value.slice(Math.max(0, start), end)
+  // 反转当前页数据，使最新数据在表格顶部（slice 返回浅拷贝，reverse 不影响原数组）
+  return tableSortOrder.value === 'desc' ? pageData.reverse() : pageData
 })
+
+// 点击时间列头切换排序方向：desc（最新在顶部）↔ asc（最旧在顶部）
+function onTableSort(sorter: any) {
+  if (!sorter || sorter.columnKey !== 'time') return
+  tableSortOrder.value = sorter.order === 'ascend' ? 'asc' : 'desc'
+}
 
 async function fetchDevices() {
   try {
