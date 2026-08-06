@@ -1087,3 +1087,61 @@ def _mount_frontend(app: FastAPI) -> None:
             return response
 
         logger.info("Frontend static files mounted: %s", frontend_dist)  # FIXED-P3: 中文日志→英文
+    else:
+        # FIXED: 前端未构建时，提供引导页面而非静默显示 Swagger 文档
+        # 用户打开 http://localhost:8080 看到的是 FastAPI 默认页面（Swagger），
+        # 而非 Vue 前端，容易误以为"只是一个 API demo"
+        from starlette.responses import HTMLResponse
+
+        _fallback_html = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EdgeLite Gateway - 前端未构建</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;max-width:680px;margin:60px auto;padding:0 20px;color:#333}
+h1{color:#009688} code{background:#f5f5f5;padding:2px 6px;border-radius:3px;font-size:14px}
+pre{background:#f5f5f5;padding:16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6}
+.tip{background:#e8f5e9;border-left:4px solid #009688;padding:12px 16px;border-radius:4px;margin:16px 0}
+</style></head>
+<body>
+<h1>🔧 EdgeLite Gateway 后端已启动</h1>
+<p>当前访问的是后端 API 服务（端口 8080），前端界面尚未构建。</p>
+<div class="tip">
+<b>选择以下任一方式查看完整界面：</b>
+</div>
+<h3>方式一：Docker 部署（推荐，自动构建前端）</h3>
+<pre>cd docker
+cp .env.example .env
+docker compose build edgelite
+docker compose up -d</pre>
+<p>构建完成后刷新本页面即可看到完整界面。</p>
+<h3>方式二：本地开发模式（前后端分别启动）</h3>
+<pre># 终端1：后端已运行（当前窗口）
+# 终端2：启动前端开发服务器
+cd web
+npm install
+npm run dev</pre>
+<p>然后浏览器打开 <code>http://localhost:5173</code>（前端开发服务器地址）。</p>
+<h3>方式三：构建前端后由后端提供服务</h3>
+<pre>cd web
+npm install
+npm run build</pre>
+<p>构建完成后刷新本页面即可。</p>
+<hr>
+<p style="color:#999;font-size:13px">
+API 文档：<a href="/docs">Swagger UI</a> ｜
+健康检查：<a href="/health/live">/health/live</a>
+</p>
+</body></html>"""
+
+        @app.get("/", include_in_schema=False)
+        async def _frontend_not_built():
+            return HTMLResponse(content=_fallback_html)
+
+        logger.warning(
+            "Frontend dist not found. Serving fallback guide page at /. "
+            "Build the frontend with `cd web && npm install && npm run build` to enable the full UI. "
+            "(checked: %s and %s)",
+            Path(__import__("os").environ.get("EDGELITE_FRONTEND_DIST", "/app/frontend/dist"),
+            Path(__file__).resolve().parent.parent.parent / "web" / "dist",
+        )

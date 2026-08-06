@@ -133,6 +133,7 @@ cd docker && docker compose --profile nginx up -d
 | `INFLUXDB_TOKEN is not set` | 没复制 `.env` 文件 | 执行 `cp docker/.env.example docker/.env` |
 | `port 8080 is already in use` | 端口被占用 | 关闭占用端口的程序，或修改 docker-compose.yml 端口 |
 | 页面打开白屏/一直在加载 | 前端没构建或其他原因 | 见下方逐步诊断 |
+| 打开 8080 只有 API 文档页面（Swagger） | 前端未构建（Python 本地部署模式） | 需另开终端启动前端：`cd web && npm install && npm run dev`，然后访问 `http://localhost:5173`；或用 Docker 部署（自动构建前端） |
 | 登录时提示"用户名或密码错误" | 忘了密码 | 首次启动查看日志获取随机生成的密码，或检查 `docker/.env` 中 `ADMIN_PASSWORD` 设置；如需重置请设置 `ADMIN_RESET_PASSWORD=true` |
 
 <details>
@@ -429,16 +430,22 @@ cd docker && docker compose --profile nginx up -d
 
 ### 方式二：Python 本地部署（开发模式）
 
+> ⚠️ **重要**：此方式需要**两个终端**分别运行后端和前端。如果只启动后端，浏览器打开 `http://localhost:8080` 会看到 API 文档页面（Swagger），而非完整的管理界面。
+
 ```bash
+# 终端 1：启动后端
 git clone https://gitee.com/suoten/EdgeLiteGateway.git && cd EdgeLiteGateway
 python -m venv .venv
 .venv\Scripts\activate        # Windows PowerShell
 source .venv/bin/activate     # Linux / Mac
 pip install -e ".[dev]"
 cp configs/config.example.yaml configs/config.yaml
-python main.py --port 8080    # 新终端启动后端
-cd web && cp .env.example .env && npm install && npm run dev  # 新终端启动前端
-# 浏览器打开 http://localhost:5173
+python main.py --port 8080
+
+# 终端 2：启动前端开发服务器（必须另开一个终端）
+cd web && cp .env.example .env && npm install && npm run dev
+
+# ✅ 浏览器打开 http://localhost:5173（前端开发服务器地址，不是 8080）
 ```
 
 <details>
