@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI 安全扫描 job 添加 `needs: [docker]` 依赖，确保 Trivy 镜像扫描针对最新构建的镜像
 
 ### Fixed
+- 设备列表操作列缺失 render 函数导致编辑/采集/克隆/删除按钮不显示（useDeviceList.ts）
+- i18n 缺失 `deviceList.startCollect` 和 `deviceList.stopCollect` 键（zh-CN.ts / en-US.ts）
+- README.md 中"验收门禁"开发记录已移除，保留产品文档定位
 - 4 处 `except Exception: pass` 静默吞没异常改为 `logger.debug/warning` 记录（engine/lifecycle.py、engine/graceful_restarter.py、engine/edge_ai_inference.py、engine/alarm_outbox.py）
 - .gitignore 增加 data/ 目录测试输出文件的额外保护规则
 - FastAPI 路由参数类型注解 `Request | None = None` 导致启动崩溃，全量修复为 `Request = None`（涉及 alarms.py、rules.py、users.py、auth.py 共 15 处）

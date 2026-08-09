@@ -1077,7 +1077,7 @@ class AllenBradleyDriver(DriverPlugin):
                 )
 
         try:
-            new_client = PLC(ip=ip, port=port, slot=slot)
+            new_client = PLC(ip_address=ip, port=port, slot=slot)
             self._client = new_client  # FIXED-P0: 先赋值到局部变量再赋值到self，构造异常时self._client保持原值
             if hasattr(self._client, "SocketTimeout"):
                 self._client.SocketTimeout = self._connection_timeout
@@ -1922,7 +1922,7 @@ class AllenBradleyDriver(DriverPlugin):
                         )
                 self._set_conn_state(AbConnState.CIP_NEGOTIATING.value, device_id, f"connecting to {target_ip}")
                 with self._sync_lock:  # FIXED-P1: client赋值需在_sync_lock保护下，与读取方法一致
-                    self._client = PLC(ip=target_ip, port=target_port, slot=slot)
+                    self._client = PLC(ip_address=target_ip, port=target_port, slot=slot)
                 if hasattr(self._client, "SocketTimeout"):
                     self._client.SocketTimeout = self._connection_timeout
                 large_forward_open = self._config.get("large_forward_open", False)

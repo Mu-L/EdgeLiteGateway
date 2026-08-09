@@ -2224,10 +2224,10 @@ class S7Driver(DriverPlugin):
                 local_tsap = self._config.get("local_tsap", 0x1000)
                 remote_tsap = self._config.get("remote_tsap", 0x0200)
                 timeout = self._config.get("connect_timeout", self._DEFAULT_CONNECT_TIMEOUT)
-                new_client.set_connection_params(ip, local_tsap, remote_tsap, timeout)  # type: ignore[call-arg]  # snap7 stubs inaccurate
+                new_client.set_connection_params(ip, local_tsap, remote_tsap)  # type: ignore[call-arg]  # snap7 stubs inaccurate
             else:
                 timeout = self._config.get("connect_timeout", self._DEFAULT_CONNECT_TIMEOUT)
-                new_client.set_connection_params(ip, 0, 0, timeout)  # type: ignore[call-arg]  # snap7 stubs inaccurate
+                new_client.set_connection_params(ip, 0, 0)  # type: ignore[call-arg]  # snap7 stubs inaccurate
             await self._s7_connect_with_timeout(new_client, ip, rack, slot)
         except Exception:
             try:

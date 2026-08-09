@@ -102,6 +102,12 @@ docs/images/
 
 # ---------- 一次性修复脚本 ----------
 scripts/fix_api_detail.py
+scripts/cleanup_test_devices.py
+scripts/clear_rate_limit.py
+scripts/full_cleanup.py
+
+# ---------- 临时文件 ----------
+aa.txt
 
 # ---------- API 契约校验临时产物 ----------
 scripts/contract_report.json

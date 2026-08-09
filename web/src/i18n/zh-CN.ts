@@ -2805,6 +2805,8 @@ const zhCN: LocaleMessages = {
     statusOffline: '离线',
     statusOnline: '在线',
     transferSuccess: '转移成功',
+    startCollect: '开始采集',
+    stopCollect: '停止采集',
   },
   deviceProtocols: {
     serialPortRequired: '串口端口名不能为空',

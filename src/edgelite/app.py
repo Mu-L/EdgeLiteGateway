@@ -1142,6 +1142,6 @@ API 文档：<a href="/docs">Swagger UI</a> ｜
             "Frontend dist not found. Serving fallback guide page at /. "
             "Build the frontend with `cd web && npm install && npm run build` to enable the full UI. "
             "(checked: %s and %s)",
-            Path(__import__("os").environ.get("EDGELITE_FRONTEND_DIST", "/app/frontend/dist"),
+            Path(__import__("os").environ.get("EDGELITE_FRONTEND_DIST", "/app/frontend/dist")),
             Path(__file__).resolve().parent.parent.parent / "web" / "dist",
         )

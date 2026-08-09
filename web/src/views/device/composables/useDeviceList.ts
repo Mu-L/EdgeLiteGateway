@@ -4,7 +4,8 @@
  * Provides reactive state for devices, filters, modals, forms, batch operations,
  * discovery, import/export, and configuration comparison.
  */
-import { ref, reactive, computed, onMounted, onUnmounted, watch, type Ref, type ComputedRef } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, h, type Ref, type ComputedRef } from 'vue'
+import { NButton } from 'naive-ui'
 import http from '@/api/http'
 import { deviceApi, type Device, type DeviceCreateParams, type PointDef } from '@/api'
 import { dialog, message } from '@/utils/discreteApi'
@@ -249,6 +250,43 @@ export function useDeviceList() {
     target_user_id: { required: true, message: t('deviceList.selectUser'), trigger: 'change' },
   }))
 
+  // ─── Individual device actions ───
+  async function handleStartCollect(deviceId: string) {
+    try {
+      await deviceApi.batchStartCollect([deviceId])
+      message.success(t('deviceList.batchStartSuccess'))
+      await fetchDevices()
+    } catch (e) {
+      message.error(extractError(e))
+    }
+  }
+  async function handleStopCollect(deviceId: string) {
+    try {
+      await deviceApi.batchStopCollect([deviceId])
+      message.success(t('deviceList.batchStopSuccess'))
+      await fetchDevices()
+    } catch (e) {
+      message.error(extractError(e))
+    }
+  }
+  async function handleDeleteDevice(deviceId: string, deviceName?: string) {
+    dialog.warning({
+      title: t('common.confirm'),
+      content: t('deviceList.deleteConfirm', { name: deviceName || deviceId }),
+      positiveText: t('common.delete'),
+      negativeText: t('common.cancel'),
+      onPositiveClick: async () => {
+        try {
+          await deviceApi.delete(deviceId)
+          message.success(t('common.deleteSuccess'))
+          await fetchDevices()
+        } catch (e) {
+          message.error(extractError(e))
+        }
+      },
+    })
+  }
+
   // ─── Table columns ───
   const columns = computed(() => [
     { type: 'selection' as const },
@@ -257,7 +295,20 @@ export function useDeviceList() {
     { title: t('deviceList.protocol'), key: 'protocol', width: 120 },
     { title: t('deviceList.status'), key: 'status', width: 100 },
     { title: t('deviceList.collectInterval'), key: 'collect_interval', width: 100 },
-    { title: t('common.actions'), key: 'actions', width: 200, fixed: 'right' as const },
+    {
+      title: t('common.actions'),
+      key: 'actions',
+      width: 220,
+      fixed: 'right' as const,
+      render: (row: any) => h('div', { style: 'display:flex;gap:4px;flex-wrap:wrap' }, [
+        h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => handleEdit(row) }, { default: () => t('common.edit') }),
+        row.status === 'online'
+          ? h(NButton, { size: 'small', text: true, type: 'warning', onClick: () => handleStopCollect(row.device_id) }, { default: () => t('deviceList.stopCollect') })
+          : h(NButton, { size: 'small', text: true, type: 'success', onClick: () => handleStartCollect(row.device_id) }, { default: () => t('deviceList.startCollect') }),
+        h(NButton, { size: 'small', text: true, type: 'info', onClick: () => handleCloneDevice(row) }, { default: () => t('deviceList.clone') }),
+        h(NButton, { size: 'small', text: true, type: 'error', onClick: () => handleDeleteDevice(row.device_id, row.name) }, { default: () => t('common.delete') }),
+      ]),
+    },
   ])
 
   // ─── Fetch devices ───
@@ -672,6 +723,7 @@ export function useDeviceList() {
     createRules, editRules, simFormRules, shareRules, transferRules, discoverColumns,
     // Methods
     fetchDevices, onProtocolChange, handleCreate, handleEditSubmit, handleEdit,
+    handleStartCollect, handleStopCollect, handleDeleteDevice,
     handleShare, openShare, handleTransfer, openTransfer,
     handleBatchDelete, handleBatchStartCollect, handleBatchStopCollect, handleBatchDeploy,
     handleDiscover, handleAddDiscovered, handleExport, handleImportFileChange, handleImportConfirm, handleCreateSim,

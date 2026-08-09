@@ -96,6 +96,17 @@ class DeviceService:
         protocol = data.get("protocol")  # FIXED: 原问题-data["protocol"]硬索引
         if protocol is None:
             raise ValueError("Missing required field: protocol")
+        # FIX: Normalize protocol alias to canonical form before DB insertion.
+        # EdgeLite's CHECK constraint only accepts canonical names (e.g., 'siemens_s7', 'mqtt_client'),
+        # but external systems (e.g., ProtoForge) may send aliases (e.g., 's7', 'mqtt').
+        # The normalize_protocol function exists but was not called in the device creation path.
+        from edgelite.constants import normalize_protocol
+        normalized = normalize_protocol(protocol)
+        if normalized and normalized != protocol:
+            logger.info("Normalizing protocol alias '%s' -> '%s' for device %s",
+                        protocol, normalized, data.get("device_id", ""))
+            data["protocol"] = normalized
+            protocol = normalized
         driver_class = self._registry.get_driver_class(protocol)
         if driver_class is None and protocol != "simulator":
             raise ValueError(f"Unsupported protocol: {protocol}")

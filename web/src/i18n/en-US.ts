@@ -2801,6 +2801,8 @@ const enUS: LocaleMessages = {
     statusOffline: 'Offline',
     statusOnline: 'Online',
     transferSuccess: 'Transfer successful',
+    startCollect: 'Start Collect',
+    stopCollect: 'Stop Collect',
   },
   deviceProtocols: {
     serialPortRequired: 'Serial port name is required',

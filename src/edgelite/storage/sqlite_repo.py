@@ -961,8 +961,17 @@ class DeviceRepo(BaseRepo):
                 await session.commit()
                 await session.refresh(orm)
                 return _orm_to_device(orm)
-        except IntegrityError:
-            raise ValueError(RepoErrors.DEVICE_EXISTS) from None
+        except IntegrityError as e:
+            err_str = str(e).lower()
+            # FIX: Differentiate UNIQUE constraint (device exists) from CHECK constraint (invalid protocol)
+            # Original code caught ALL IntegrityErrors as "DEVICE_EXISTS", causing CHECK constraint
+            # violations (e.g., protocol alias 's7' not in allowed list) to be misreported as
+            # "device already exists" instead of a validation error.
+            if "unique" in err_str or "primary key" in err_str:
+                raise ValueError(RepoErrors.DEVICE_EXISTS) from None
+            else:
+                # CHECK constraint violation or other integrity error
+                raise ValueError(f"Device validation failed: {e}") from e
 
     async def get(self, device_id: str) -> dict | None:
         # FIXED: 原问题-查询操作无try-except保护
