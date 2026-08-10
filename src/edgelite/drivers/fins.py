@@ -1862,13 +1862,13 @@ class OmronFinsDriver(DriverPlugin):
         area, offset, data_type = self._parse_address(address)
 
         if self._is_direct_mode:
-            with self._client_lock:  # FIXED-P0: 快照client引用
+            with self._client_lock:
                 client = self._client
             if client is None:
                 raise ConnectionError("FINS client is not connected")
             return self._read_point_direct_mode(area, offset, data_type)
 
-        with self._client_lock:  # FIXED-P0: 仅获取client引用时持锁，与直接模式一致，I/O在锁外执行
+        with self._client_lock:
             client = self._client
         if client is None:
             raise ConnectionError("FINS client is not connected")
