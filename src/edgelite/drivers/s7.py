@@ -889,14 +889,27 @@ class S7Driver(DriverPlugin):
         start_time = time.monotonic()
         max_total_timeout = self._MAX_BATCH_RETRY_TIMEOUT if hasattr(self, "_MAX_BATCH_RETRY_TIMEOUT") else 30
 
+        # FIXED: Map point names to S7 addresses before reading.
+        # The scheduler passes point NAMES, but _read_points_batch expects S7 addresses (like "DB1.D0").
+        device = self._devices.get(device_id, {})
+        device_points = device.get("points", {})
+        addr_to_name = {}
+        read_addrs = []
+        for name in points:
+            p = device_points.get(name, {})
+            addr = p.get("address", name)  # Fall back to name if address not found
+            addr_to_name[addr] = name
+            read_addrs.append(addr)
+
         try:
             async with self._lock:
-                record_packet("tx", "s7", device_id, f"S7 Read: {points}")
+                record_packet("tx", "s7", device_id, f"S7 Read: {read_addrs}")
                 values = await asyncio.wait_for(
-                    self._run_in_s7_thread_async(self._read_points_batch, points),
+                    self._run_in_s7_thread_async(self._read_points_batch, read_addrs),
                     timeout=self._READ_TIMEOUT,
                 )
-                result = values
+                # Map results back from addresses to point names
+                result = {addr_to_name.get(k, k): v for k, v in values.items()}
                 record_packet("rx", "s7", device_id, f"S7 Response: {len(result)} values")
         except TimeoutError:  # FIXED-P1: 兼容Python<3.11，asyncio.TimeoutError非TimeoutError子类
             self._record_read_failure(device_id)
@@ -925,10 +938,10 @@ class S7Driver(DriverPlugin):
                 try:
                     async with self._lock:
                         values = await asyncio.wait_for(
-                            self._run_in_s7_thread_async(self._read_points_batch, points, segment_bytes),
+                            self._run_in_s7_thread_async(self._read_points_batch, read_addrs, segment_bytes),
                             timeout=min(self._READ_TIMEOUT, remaining_timeout),
                         )
-                        result = values
+                        result = {addr_to_name.get(k, k): v for k, v in values.items()}
                         record_packet("rx", "s7", device_id, f"S7 Retry Response: {len(result)} values")
                         break
                 except Exception as retry_err:

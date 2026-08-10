@@ -1552,8 +1552,23 @@ class OmronFinsDriver(DriverPlugin):
         batch_size = self._config.get("batch_size", 10)
         result = {}
 
-        for i in range(0, len(points), batch_size):
-            batch = points[i : i + batch_size]
+        # FIXED: Map point names to FINS addresses before reading.
+        # The scheduler passes point NAMES, but _read_point expects FINS addresses (like "DM0").
+        # Without this mapping, the driver tries to parse "Temperature" as a FINS address and fails.
+        device = self._devices.get(device_id, {})
+        device_points = device.get("points", {})
+        name_to_addr = {}
+        addr_to_name = {}
+        read_list = []
+        for name in points:
+            p = device_points.get(name, {})
+            addr = p.get("address", name)  # Fall back to name if address not found
+            name_to_addr[name] = addr
+            addr_to_name[addr] = name
+            read_list.append(addr)
+
+        for i in range(0, len(read_list), batch_size):
+            batch = read_list[i : i + batch_size]
             try:
                 batch_result = await asyncio.wait_for(
                     self._read_points_batch_with_fallback(batch),
@@ -1563,8 +1578,11 @@ class OmronFinsDriver(DriverPlugin):
                 self._record_read_failure(device_id)
                 self._log_error(FinsDriverErrors.READ_TIMEOUT, device_id, f"{self._READ_TIMEOUT}s")
                 now = datetime.now(UTC)
-                batch_result = {p: PointValue(value=None, quality="bad", timestamp=now) for p in batch}
-            result.update(batch_result)
+                batch_result = {a: PointValue(value=None, quality="bad", timestamp=now) for a in batch}
+            # Map results back from addresses to point names
+            for addr, pv in batch_result.items():
+                name = addr_to_name.get(addr, addr)
+                result[name] = pv
 
         now_utc = datetime.now(UTC)
         has_good = False

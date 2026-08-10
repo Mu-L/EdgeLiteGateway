@@ -646,8 +646,20 @@ class McDriver(DriverPlugin):
         batch_size = self._effective_batch_size or self._config.get("batch_size", 10)
         result = {}
 
-        for i in range(0, len(points), batch_size):
-            batch = points[i : i + batch_size]
+        # FIXED: Map point names to MC addresses before reading.
+        # The scheduler passes point NAMES, but _read_points_batch expects MC addresses (like "D100").
+        device = self._devices.get(device_id, {})
+        device_points = device.get("points", {})
+        addr_to_name = {}
+        read_addrs = []
+        for name in points:
+            p = device_points.get(name, {})
+            addr = p.get("address", name)  # Fall back to name if address not found
+            addr_to_name[addr] = name
+            read_addrs.append(addr)
+
+        for i in range(0, len(read_addrs), batch_size):
+            batch = read_addrs[i : i + batch_size]
             try:
                 batch_result = await asyncio.wait_for(
                     self._read_points_batch(batch),
@@ -690,6 +702,8 @@ class McDriver(DriverPlugin):
                 batch_result = {p: PointValue(value=None, quality="bad", timestamp=now) for p in batch}
                 if batch_size > 1:
                     self._effective_batch_size = max(1, batch_size // 2)
+            # Map results back from addresses to point names
+            batch_result = {addr_to_name.get(k, k): v for k, v in batch_result.items()}
             result.update(batch_result)
 
         self._update_degrade_level(device_id)
