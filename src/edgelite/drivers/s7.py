@@ -875,7 +875,8 @@ class S7Driver(DriverPlugin):
 
         if not self._running or not self._client:
             await self._try_reconnect(device_id)
-            return {name: _bad_pv(S7DriverErrors.CONN_FAILED) for name in points}
+            if not self._running or not self._client:
+                return {name: _bad_pv(S7DriverErrors.CONN_FAILED) for name in points}
 
         if self._password and time.time() < self._auth_locked_until:
             self._log_error(
