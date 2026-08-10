@@ -362,12 +362,12 @@ class McDriver(DriverPlugin):
     ):  # FIXED-P0: 移除 _sync_lock，由 _call_sync 的 _locked_call 统一加锁，避免 threading.Lock 不可重入死锁
         return self._write_point(address, value)
 
-    def _sync_write_device(
+    def _sync_batchwrite_wordunits(
         self, addr, values_list
     ):  # FIXED-P0: 移除 _sync_lock，由 _call_sync 的 _locked_call 统一加锁，避免 threading.Lock 不可重入死锁
         if self._client is None:
             raise RuntimeError("MC client not connected")
-        return self._client.write_device(addr, values_list)
+        return self._client.batchwrite_wordunits(addr, values_list)
 
     def _apply_comm_mode(self, client, mode: str | None = None) -> None:
         """应用通信模式 (binary/ascii) 到 pymcprotocol client。
@@ -826,7 +826,7 @@ class McDriver(DriverPlugin):
         try:
             if self._client is None:
                 return False
-            self._client.read_word_device("D0", 1)
+            self._client.batchread_wordunits("D0", 1)
             return True
         except Exception as e:
             logger.warning("[mc] ping failed: %s", e)  # FIXED-P1: 原问题-ping异常返回False无日志
@@ -855,42 +855,42 @@ class McDriver(DriverPlugin):
             return self._read_fx5u_network(addr, suffix, client=client)
         elif suffix == "bit":
             # 位读取
-            result = client.read_bit_device(addr, 1)
-            if not result:  # FIXED-P2: 检查返回值是否为空，防止IndexError
-                raise ValueError(f"Empty response from read_bit_device({addr}, 1)")
+            result = client.batchread_bitunits(addr, 1)
+            if not result:
+                raise ValueError(f"Empty response from batchread_bitunits({addr}, 1)")
             return result[0]
         elif suffix == "word":
             # 字读取(16位有符号)
-            values = client.read_device(addr, 1)
-            if not values:  # FIXED-P2: 检查返回值是否为空，防止IndexError
-                raise ValueError(f"Empty response from read_device({addr}, 1)")
+            values = client.batchread_wordunits(addr, 1)
+            if not values:
+                raise ValueError(f"Empty response from batchread_wordunits({addr}, 1)")
             return values[0]
         elif suffix == "uword":
             # 无符号字读取
-            values = client.read_device(addr, 1)
-            if not values:  # FIXED-P2: 检查返回值是否为空，防止IndexError
-                raise ValueError(f"Empty response from read_device({addr}, 1)")
+            values = client.batchread_wordunits(addr, 1)
+            if not values:
+                raise ValueError(f"Empty response from batchread_wordunits({addr}, 1)")
             return values[0] & 0xFFFF
         elif suffix == "long":
             # 双字读取(32位)
-            values = client.read_device(addr, 2)
+            values = client.batchread_wordunits(addr, 2)
             # FIXED-P1: 数据不足时抛出异常而非返回PointValue，保持返回类型一致
             if not isinstance(values, (list, tuple)) or len(values) < 2:
-                raise ValueError(f"Insufficient data from read_device({addr}, 2): {values}")
+                raise ValueError(f"Insufficient data from batchread_wordunits({addr}, 2): {values}")
             # FIXED-P1: 校验列表元素类型，防止None/非int元素导致位运算TypeError
             if any(not isinstance(v, int) for v in values[:2]):
-                raise ValueError(f"Non-integer value in read_device({addr}, 2): {values}")
+                raise ValueError(f"Non-integer value in batchread_wordunits({addr}, 2): {values}")
             if self._byte_order == "little":
                 return ((values[1] & 0xFFFF) << 16) | (values[0] & 0xFFFF)  # FIXED-P2: 移位前掩码，防止负数符号扩展
             else:
                 return ((values[0] & 0xFFFF) << 16) | (values[1] & 0xFFFF)  # FIXED-P2: 移位前掩码，防止负数符号扩展
         elif suffix == "float":
-            values = client.read_device(addr, 2)
+            values = client.batchread_wordunits(addr, 2)
             # FIXED-P1: 数据不足时抛出异常而非返回PointValue，保持返回类型一致
             if not isinstance(values, (list, tuple)) or len(values) < 2:
-                raise ValueError(f"Insufficient data from read_device({addr}, 2): {values}")
+                raise ValueError(f"Insufficient data from batchread_wordunits({addr}, 2): {values}")
             if any(not isinstance(v, int) for v in values[:2]):
-                raise ValueError(f"Non-integer value in read_device({addr}, 2): {values}")
+                raise ValueError(f"Non-integer value in batchread_wordunits({addr}, 2): {values}")
             if self._byte_order == "little":
                 raw = struct.pack("<HH", values[0] & 0xFFFF, values[1] & 0xFFFF)
                 return struct.unpack("<f", raw)[0]
@@ -898,9 +898,9 @@ class McDriver(DriverPlugin):
                 raw = struct.pack(">HH", values[0] & 0xFFFF, values[1] & 0xFFFF)
                 return struct.unpack(">f", raw)[0]
         else:
-            values = client.read_device(addr, 1)
+            values = client.batchread_wordunits(addr, 1)
             if not values:  # FIXED-P1: 空值检查，防止IndexError
-                raise ValueError(f"Empty response from read_device({addr}, 1)")
+                raise ValueError(f"Empty response from batchread_wordunits({addr}, 1)")
             return values[0]
 
     def _read_fx5u_slmp_direct(self, addr: str, suffix: str, client: Any = None) -> Any:
@@ -923,7 +923,7 @@ class McDriver(DriverPlugin):
                 element_addr = int(addr_str)
             else:
                 # 回退：尝试直接解析
-                return c.read_device(addr, 1)[0]
+                return c.batchread_wordunits(addr, 1)[0]
 
             # FX5U SLMP 直接模式
             # 通过 set_accessopt 设置直接模式
@@ -940,9 +940,9 @@ class McDriver(DriverPlugin):
                     # 构建访问路径: G{addr}
                     access_addr = f"G{element_addr}"
                     if suffix == "bit":
-                        return c.read_bit_device(access_addr, 1)[0]
+                        return c.batchread_bitunits(access_addr, 1)[0]
                     else:
-                        values = c.read_device(access_addr, 1)
+                        values = c.batchread_wordunits(access_addr, 1)
                         return values[0] if values else None
                 finally:
                     try:
@@ -956,9 +956,9 @@ class McDriver(DriverPlugin):
                         logger.warning("[mc] FX5U accessopt restore failed: %s", e)
             else:
                 # 回退：直接使用地址
-                values = c.read_device(addr, 1)
+                values = c.batchread_wordunits(addr, 1)
                 if not values:  # FIXED-P1: 空值检查
-                    raise ValueError(f"Empty response from read_device({addr}, 1)")
+                    raise ValueError(f"Empty response from batchread_wordunits({addr}, 1)")
                 return values[0]
         except (
             ConnectionError,
@@ -969,10 +969,10 @@ class McDriver(DriverPlugin):
         except Exception as e:
             logger.warning("[mc] FX5U SLMP直接模式读取失败 %s: %s", addr, e, exc_info=True)
             # 回退：使用标准读取
-            values = c.read_device(addr.replace("\\", ""), 1)
+            values = c.batchread_wordunits(addr.replace("\\", ""), 1)
             if not values:  # FIXED-P1: 空值检查
                 raise ValueError(
-                    f"Empty response from read_device({addr}, 1)"
+                    f"Empty response from batchread_wordunits({addr}, 1)"
                 ) from e  # FIXED(P3): 原问题-B904 异常链丢失; 修复-添加 from e
             return values[0]
 
@@ -992,9 +992,9 @@ class McDriver(DriverPlugin):
                 network_no = int(network_str) if network_str else 0
                 # FIXED-P3: 原问题-dev_type/dev_addr赋值后未使用(ruff F841); 修复-移除无用的设备类型/地址解析，后续直接使用device_str
             else:
-                values = c.read_device(addr, 1)
+                values = c.batchread_wordunits(addr, 1)
                 if not values:  # FIXED-P1: 空值检查
-                    raise ValueError(f"Empty response from read_device({addr}, 1)")
+                    raise ValueError(f"Empty response from batchread_wordunits({addr}, 1)")
                 return values[0]
 
             # 通过 pymcprotocol 的网络访问功能
@@ -1004,9 +1004,9 @@ class McDriver(DriverPlugin):
                 c.set_accessopt(network_no=network_no)
                 try:
                     if suffix == "bit":
-                        return c.read_bit_device(device_str, 1)[0]
+                        return c.batchread_bitunits(device_str, 1)[0]
                     else:
-                        values = c.read_device(device_str, 1)
+                        values = c.batchread_wordunits(device_str, 1)
                         return values[0] if values else None
                 finally:
                     try:
@@ -1015,9 +1015,9 @@ class McDriver(DriverPlugin):
                     except Exception as e:
                         logger.warning("[mc] operation failed: %s", e)  # FIXED-P2: 原问题-异常被静默吞没，添加日志记录
             else:
-                values = c.read_device(addr.replace("\\", ""), 1)
+                values = c.batchread_wordunits(addr.replace("\\", ""), 1)
                 if not values:  # FIXED-P1: 空值检查
-                    raise ValueError(f"Empty response from read_device({addr}, 1)")
+                    raise ValueError(f"Empty response from batchread_wordunits({addr}, 1)")
                 return values[0]
         except (
             ConnectionError,
@@ -1027,10 +1027,10 @@ class McDriver(DriverPlugin):
             raise
         except Exception as e:
             logger.warning("[mc] FX5U网络读取失败 %s: %s", addr, e, exc_info=True)
-            values = c.read_device(addr.replace("\\", ""), 1)
+            values = c.batchread_wordunits(addr.replace("\\", ""), 1)
             if not values:  # FIXED-P1: 空值检查
                 raise ValueError(
-                    f"Empty response from read_device({addr}, 1)"
+                    f"Empty response from batchread_wordunits({addr}, 1)"
                 ) from e  # FIXED(P3): 原问题-B904 异常链丢失; 修复-添加 from e
             return values[0]
 
@@ -1192,32 +1192,32 @@ class McDriver(DriverPlugin):
         addr, suffix = self._parse_address(address)
 
         if suffix == "bit":
-            client.write_bit_device(addr, [int(bool(value))])
+            client.batchwrite_bitunits(addr, [int(bool(value))])
         elif suffix in ("B", "byte", "int8"):
             # FIXED-P0: 字节类型写入，仅写入低8位到指定地址，避免覆盖相邻寄存器
-            client.write_device(addr, [int(value) & 0xFF])
+            client.batchwrite_wordunits(addr, [int(value) & 0xFF])
         elif suffix == "long" or (hasattr(self, "_point_types") and self._point_types.get(address) == "long"):
             word_val = int(value) & 0xFFFFFFFF
             hi = (word_val >> 16) & 0xFFFF
             lo = word_val & 0xFFFF
             # FIXED-P0: long写入根据byte_order调整字序，与读取逻辑一致
             if self._byte_order == "little":
-                client.write_device(addr, [lo, hi])
+                client.batchwrite_wordunits(addr, [lo, hi])
             else:
-                client.write_device(addr, [hi, lo])
+                client.batchwrite_wordunits(addr, [hi, lo])
         elif suffix == "float" or (hasattr(self, "_point_types") and self._point_types.get(address) == "float"):
             if self._byte_order == "little":
                 raw = struct.pack("<f", float(value))
                 lo = struct.unpack("<H", raw[0:2])[0]
                 hi = struct.unpack("<H", raw[2:4])[0]
-                client.write_device(addr, [lo, hi])
+                client.batchwrite_wordunits(addr, [lo, hi])
             else:
                 raw = struct.pack(">f", float(value))
                 hi = struct.unpack(">H", raw[0:2])[0]
                 lo = struct.unpack(">H", raw[2:4])[0]
-                client.write_device(addr, [hi, lo])
+                client.batchwrite_wordunits(addr, [hi, lo])
         else:
-            client.write_device(addr, [int(value) & 0xFFFF])
+            client.batchwrite_wordunits(addr, [int(value) & 0xFFFF])
 
     async def write_points_batch(self, device_id: str, points: dict[str, Any]) -> dict[str, bool]:
         # FIXED-P1: 方法名和参数类型与基类 write_points_batch 对齐
@@ -1246,7 +1246,7 @@ class McDriver(DriverPlugin):
                 record_packet("tx", "mc", device_id, f"MC Batch Write: {addr} x{len(values_list)}")
                 async with self._lock:
                     await self._call_sync(
-                        self._sync_write_device, addr, values_list, timeout=self._WRITE_TIMEOUT, write=True
+                        self._sync_batchwrite_wordunits, addr, values_list, timeout=self._WRITE_TIMEOUT, write=True
                     )  # FIXED-P1: 写操作持锁
                 record_packet("rx", "mc", device_id, f"MC Batch Write: {addr} x{len(values_list)} OK")
                 self._record_write_success(device_id)
