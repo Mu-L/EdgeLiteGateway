@@ -83,6 +83,9 @@ class ContextFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         """将上下文字段注入日志记录（线程安全快照读取）。"""
+        # FIXED-P0: 始终设置 request_id 默认值，防止格式化器 %(request_id)s 报 KeyError
+        if not hasattr(record, 'request_id'):
+            record.request_id = '-'
         # FIXED-P2: 复制context快照，避免迭代期间其他线程修改字典导致RuntimeError
         with self._lock:
             context_snapshot = dict(self._context)

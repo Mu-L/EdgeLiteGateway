@@ -464,56 +464,17 @@ class S7Driver(DriverPlugin):
             client = self._client  # FIXED-P0: 快照client引用，防止重连期间client被替换
             if client is None:
                 raise ConnectionError("S7 client is not connected")
-            # BUG-001: 设置snap7操作超时，防止C层阻塞导致_sync_lock死锁
-            old_timeout = None
-            try:
-                old_timeout = client.get_timeout()
-            # FIXED-P1: 原问题-except Exception: pass 静默吞没异常，改为至少 logger.debug
-            except Exception as e:
-                logger.debug("[s7] code=GET_TIMEOUT_FAILED msg=client.get_timeout() failed: %s", e)
-            try:
-                # FIXED-P1: 从设备配置读取read_timeout，默认5秒
-                # 原问题：5秒超时硬编码，无法适应不同网络环境（如公网连接、慢速PLC等）
-                # 修复：从self._config读取read_timeout（毫秒），默认5000ms
-                read_timeout_ms = int(self._config.get("read_timeout", 5000)) if self._config else 5000
-                client.set_timeout(read_timeout_ms)
-                return client.db_read(db_number, byte_offset, size)
-            finally:
-                if old_timeout is not None:
-                    try:
-                        client.set_timeout(old_timeout)
-                    # FIXED-P1: 原问题-except Exception: pass 静默吞没异常，改为至少 logger.debug
-                    except Exception as e:
-                        logger.debug(
-                            "[s7] code=SET_TIMEOUT_RESTORE_FAILED msg=client.set_timeout(old_timeout) failed: %s", e
-                        )
+        # FIXED-P0: snap7 某些版本没有 set_timeout/get_timeout 方法，直接调用 db_read
+        # snap7 C 层有默认超时保护，无需额外设置
+        return client.db_read(db_number, byte_offset, size)
 
     def _sync_db_write(self, db_number, byte_offset, data):
         with self._sync_lock:
             client = self._client  # FIXED-P0: 快照client引用，防止重连期间client被替换
             if client is None:
                 raise ConnectionError("S7 client is not connected")
-            # BUG-001: 设置snap7操作超时，防止C层阻塞导致_sync_lock死锁
-            old_timeout = None
-            try:
-                old_timeout = client.get_timeout()
-            # FIXED-P1: 原问题-except Exception: pass 静默吞没异常，改为至少 logger.debug
-            except Exception as e:
-                logger.debug("[s7] code=GET_TIMEOUT_FAILED msg=client.get_timeout() failed: %s", e)
-            try:
-                # FIXED-P1: 原问题-写入超时硬编码5000ms，与读取超时不一致；改为从配置读取write_timeout
-                write_timeout_ms = int(self._config.get("write_timeout", 5000)) if self._config else 5000
-                client.set_timeout(write_timeout_ms)
-                return client.db_write(db_number, byte_offset, data)
-            finally:
-                if old_timeout is not None:
-                    try:
-                        client.set_timeout(old_timeout)
-                    # FIXED-P1: 原问题-except Exception: pass 静默吞没异常，改为至少 logger.debug
-                    except Exception as e:
-                        logger.debug(
-                            "[s7] code=SET_TIMEOUT_RESTORE_FAILED msg=client.set_timeout(old_timeout) failed: %s", e
-                        )
+        # FIXED-P0: snap7 某些版本没有 set_timeout/get_timeout 方法，直接调用 db_write
+        return client.db_write(db_number, byte_offset, data)
 
     def _sync_get_cpu_info(self):
         with self._sync_lock:
@@ -1555,31 +1516,13 @@ class S7Driver(DriverPlugin):
                 client = self._client
                 if client is None:
                     raise ConnectionError("S7 client is not connected")
-                # FIXED-P1: 原问题-BOOL写入路径直接调用db_read/db_write未设置snap7超时，C层阻塞时_sync_lock被长时间持有
-                old_timeout = None
-                try:
-                    old_timeout = client.get_timeout()
-                # FIXED-P1: 原问题-except Exception: pass 静默吞没异常，改为至少 logger.debug
-                except Exception as e:
-                    logger.debug("[s7] code=GET_TIMEOUT_FAILED msg=client.get_timeout() failed: %s", e)
-                try:
-                    write_timeout_ms = int(self._config.get("write_timeout", 5000)) if self._config else 5000
-                    client.set_timeout(write_timeout_ms)
-                    data = client.db_read(db_number, byte_offset, 1)
-                    if value:
-                        data[0] |= 1 << bit_offset
-                    else:
-                        data[0] &= ~(1 << bit_offset)
-                    client.db_write(db_number, byte_offset, data)
-                finally:
-                    if old_timeout is not None:
-                        try:
-                            client.set_timeout(old_timeout)
-                        # FIXED-P1: 原问题-except Exception: pass 静默吞没异常，改为至少 logger.debug
-                        except Exception as e:
-                            logger.debug(
-                                "[s7] code=SET_TIMEOUT_RESTORE_FAILED msg=client.set_timeout(old_timeout) failed: %s", e
-                            )
+                # FIXED-P0: snap7 某些版本没有 set_timeout/get_timeout 方法
+                data = client.db_read(db_number, byte_offset, 1)
+                if value:
+                    data[0] |= 1 << bit_offset
+                else:
+                    data[0] &= ~(1 << bit_offset)
+                client.db_write(db_number, byte_offset, data)
         elif type_char == "B":
             data = bytearray([int(value) & 0xFF])
             self._sync_db_write(db_number, byte_offset, data)

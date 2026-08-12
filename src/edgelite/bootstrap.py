@@ -854,6 +854,10 @@ async def bootstrap_all(c: ServiceContainer, config) -> None:
         )  # FIXED-P3: 中文日志→英文
 
     logging.basicConfig(level=config.logging.level, format=config.logging.format)
+    # FIXED-P0: 添加 RequestIdFilter 到根 logger，确保所有日志记录都有 request_id 字段
+    # 防止驱动日志（s7/fins/mc 等）格式化时 KeyError: 'request_id'
+    from edgelite.middleware.request_id import RequestIdFilter
+    logging.getLogger().addFilter(RequestIdFilter())
 
     # FIXED: 抑制 pymodbus v3 弃用警告（ModbusDeviceContext/ModbusServerContext 等）
     # 这些 API 在 v4 中将被移除，当前版本使用 v3 API 是正确的

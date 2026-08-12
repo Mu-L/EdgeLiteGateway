@@ -1846,6 +1846,9 @@ class OmronFinsDriver(DriverPlugin):
         elif addr_upper.startswith("C"):
             offset = _safe_int(addr_upper[1:])
             return ("c", offset, data_type)
+        elif addr_upper.startswith("DM"):
+            offset = _safe_int(addr_upper[2:])
+            return ("d", offset, data_type)
         elif addr_upper.startswith("D"):
             offset = _safe_int(addr_upper[1:])
             return ("d", offset, data_type)
@@ -1912,7 +1915,7 @@ class OmronFinsDriver(DriverPlugin):
                 + struct.pack(">H", word_count)
             )
 
-            return self._fins_tcp_request(fins_command, data_type)
+            return self._fins_tcp_request_sync(fins_command, data_type)
         except FinsResponseError:
             raise
         except Exception as e:
@@ -2017,7 +2020,7 @@ class OmronFinsDriver(DriverPlugin):
             if len(response) < data_len:
                 raise RuntimeError(f"FINS response incomplete: expected {data_len} bytes, got {len(response)}")
 
-            err_code = struct.unpack(">H", response[10:12])[0] if len(response) >= 12 else 0
+            err_code = struct.unpack(">H", response[12:14])[0] if len(response) >= 14 else 0
             if err_code != 0:
                 is_write = len(fins_command) > 10 and fins_command[10] == 0x01 and fins_command[11] == 0x02
                 code_map = _FINS_WRITE_RESPONSE_CODE_MAP if is_write else _FINS_RESPONSE_CODE_MAP

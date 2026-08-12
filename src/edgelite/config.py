@@ -327,7 +327,7 @@ class SecurityConfig(BaseModel):
 class LoggingConfig(BaseModel):
     level: str = "INFO"
     # FIXED(G-02): 日志格式包含 request_id 字段，配合 RequestIdFilter 实现请求级日志串联
-    format: str = "%(asctime)s | %(levelname)-8s | %(name)s | req_id=%(request_id)s | %(message)s"
+    format: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
     json_format: bool = False
     log_dir: str = "data/logs"
     max_bytes: int = 52428800
