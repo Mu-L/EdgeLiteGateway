@@ -33,8 +33,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Install ruff
-        # FIXED(ci): 钉住版本，避免 ruff 新版本格式风格漂移导致 format check 误报
-        run: pip install "ruff==0.15.11"
+        # FIXED(ci): 钉住版本，避免 ruff 新版本格式风格漂移导致 format check 误报；
+        # 附带 pyyaml（scripts/compare_config.py 的 Config drift check 依赖）
+        run: pip install "ruff==0.15.11" pyyaml
       - name: Ruff check
         run: ruff check .
       - name: Ruff format check
