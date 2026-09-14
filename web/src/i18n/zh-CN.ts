@@ -2695,6 +2695,7 @@ const zhCN: LocaleMessages = {
     discoverHost: '发现主机',
     discover: '发现',
     discoverResult: '发现结果',
+    discoverEmpty: '未发现设备，请检查主机地址、端口及从站配置',
     importConfirm: '确认导入',
     deployTemplate: '部署模板',
     deploy: '部署',

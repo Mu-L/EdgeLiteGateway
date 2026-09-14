@@ -2717,6 +2717,7 @@ const enUS: LocaleMessages = {
     discoverHost: 'Discover Host',
     discover: 'Discover',
     discoverResult: 'Discover Result',
+    discoverEmpty: 'No devices found. Please check host, port and slave configuration.',
     importConfirm: 'Confirm Import',
     deployTemplate: 'Deploy Template',
     deploy: 'Deploy',

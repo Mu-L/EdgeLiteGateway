@@ -332,6 +332,8 @@ export function useDeviceList() {
 
   // ─── Protocol change handler ───
   function onProtocolChange(protocol: string) {
+    // FIX: 必须先更新 createForm.protocol，否则 n-select（:value 单向绑定）无法显示选中值
+    createForm.protocol = protocol
     const cfg = PROTOCOL_CONFIGS.value[protocol]
     if (cfg) {
       const defaults: Record<string, any> = {}
@@ -466,7 +468,23 @@ export function useDeviceList() {
     discoverResults.value = []
     try {
       const data = await deviceApi.discover({ protocol: discoverProtocol.value, host: discoverHost.value, port: discoverPort.value })
-      discoverResults.value = data || []
+      // 归一化发现结果：驱动返回 host/port/slave_id，表格列需要 device_id/address；
+      // device_id 需符合后端 ^[a-z0-9][a-z0-9_-]{0,62}[a-z0-9]$ 规则（去除点号等非法字符）
+      discoverResults.value = (data || []).map((d: any, i: number) => {
+        const rawId = `${d.device_id || `${d.protocol || 'dev'}-${d.host || 'host'}-${d.port ?? '0'}-${d.slave_id ?? i + 1}`}`
+        const safeId = String(rawId).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || `device-${i + 1}`
+        return {
+          ...d,
+          device_id: safeId,
+          address: d.address || `${d.host}:${d.port}${d.slave_id != null ? ` (slave ${d.slave_id})` : ''}`,
+        }
+      })
+      if (discoverResults.value.length) {
+        // 修复：发现成功后打开结果弹窗（原代码拿到结果后未打开弹窗，页面看不到任何反馈）
+        showDiscoverModal.value = true
+      } else {
+        message.info(t('deviceList.discoverEmpty'))
+      }
     } catch (e) {
       message.error(extractError(e))
     } finally {
@@ -479,7 +497,14 @@ export function useDeviceList() {
     addingDevices.value = true
     try {
       const selected = discoverResults.value.filter(r => selectedDiscoverKeys.value.includes(r.device_id || r.address))
-      await Promise.all(selected.map(s => deviceApi.create(s)))
+      // 归一化为 DeviceCreate 结构（config 必含 slave_id，points 至少 1 个测点）
+      await Promise.all(selected.map(s => deviceApi.create({
+        device_id: s.device_id,
+        name: s.name || s.device_id,
+        protocol: s.protocol,
+        config: { host: s.host, port: s.port, slave_id: s.slave_id },
+        points: [{ name: 'holding_reg_0', data_type: 'uint16', address: '0', access_mode: 'r', unit: '' }],
+      })))
       message.success(t('deviceList.addDiscoveredSuccess'))
       showDiscoverModal.value = false
       selectedDiscoverKeys.value = []
