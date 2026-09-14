@@ -292,11 +292,7 @@ def _login(client: httpx.Client, username: str, password: str) -> str | None:
             return None
         data = r.json()
         # 优先从 data.data.access_token 取（项目约定格式）
-        token = (
-            data.get("data", {}).get("access_token")
-            if isinstance(data.get("data"), dict)
-            else None
-        )
+        token = data.get("data", {}).get("access_token") if isinstance(data.get("data"), dict) else None
         # 兜底：直接从顶层取
         if not token:
             token = data.get("access_token")
@@ -410,10 +406,7 @@ def run_api_checks(
             continue
         get_routes.append((m, p))
 
-    print(
-        f"  发现 {len(all_routes)} 个总端点，"
-        f"其中 {len(get_routes)} 个 GET 端点待测试（排除 {skipped_excluded} 个）"
-    )
+    print(f"  发现 {len(all_routes)} 个总端点，其中 {len(get_routes)} 个 GET 端点待测试（排除 {skipped_excluded} 个）")
 
     if not get_routes:
         print("  ⚠️  未发现任何可测试的 GET 端点，跳过 API 检查")
@@ -426,9 +419,7 @@ def run_api_checks(
         token = _login(client, username, password)
         if not token:
             print("  ❌ 登录失败，无法获取 access_token，API 检查中止")
-            return 0, len(get_routes), [
-                ("POST", "/api/v1/auth/login", -1, "login failed")
-            ]
+            return 0, len(get_routes), [("POST", "/api/v1/auth/login", -1, "login failed")]
 
         # 5. 遍历所有 GET 端点
         passed = 0
@@ -481,36 +472,30 @@ def _check_frontend_with_playwright(
                 page = context.new_page()
                 console_errors: list[str] = []
 
-                def _on_console(msg: Any) -> None:
+                def _on_console(msg: Any, _errors: list[str] = console_errors) -> None:
                     if msg.type == "error":
-                        console_errors.append(msg.text)
+                        _errors.append(msg.text)
 
-                def _on_pageerror(err: Any) -> None:
-                    console_errors.append(f"pageerror: {err}")
+                def _on_pageerror(err: Any, _errors: list[str] = console_errors) -> None:
+                    _errors.append(f"pageerror: {err}")
 
                 page.on("console", _on_console)
                 page.on("pageerror", _on_pageerror)
                 try:
-                    response = page.goto(
-                        url, wait_until="networkidle", timeout=int(timeout * 1000)
-                    )
+                    response = page.goto(url, wait_until="networkidle", timeout=int(timeout * 1000))
                     status = response.status if response else 0
                     if status != 200:
                         failures.append((route, status, f"HTTP {status}"))
                         print(f"  ❌ FAIL  {route:40s}  HTTP {status}")
                     elif console_errors:
                         err_summary = "; ".join(console_errors[:3])
-                        failures.append(
-                            (route, status, f"console errors: {err_summary[:200]}")
-                        )
+                        failures.append((route, status, f"console errors: {err_summary[:200]}"))
                         print(f"  ❌ FAIL  {route:40s}  console errors: {err_summary[:200]}")
                     else:
                         passed += 1
                         print(f"  ✅ PASS  {route:40s}  HTTP {status}")
                 except Exception as e:
-                    failures.append(
-                        (route, 0, f"exception: {type(e).__name__}: {e}")
-                    )
+                    failures.append((route, 0, f"exception: {type(e).__name__}: {e}"))
                     print(f"  ❌ FAIL  {route:40s}  exception: {e}")
                 finally:
                     page.close()
@@ -533,9 +518,7 @@ def _check_frontend_with_httpx(
     failures: list[tuple[str, int, str]] = []
     total = len(routes)
 
-    with httpx.Client(
-        base_url=frontend_url, timeout=timeout, follow_redirects=True
-    ) as client:
+    with httpx.Client(base_url=frontend_url, timeout=timeout, follow_redirects=True) as client:
         for route in routes:
             try:
                 r = client.get(route)
@@ -544,14 +527,10 @@ def _check_frontend_with_httpx(
                     print(f"  ✅ PASS  {route:40s}  HTTP {r.status_code}")
                 else:
                     body = r.text[:200].replace("\n", " ")
-                    failures.append(
-                        (route, r.status_code, f"HTTP {r.status_code} body={body}")
-                    )
+                    failures.append((route, r.status_code, f"HTTP {r.status_code} body={body}"))
                     print(f"  ❌ FAIL  {route:40s}  HTTP {r.status_code} body={body}")
             except Exception as e:
-                failures.append(
-                    (route, 0, f"exception: {type(e).__name__}: {e}")
-                )
+                failures.append((route, 0, f"exception: {type(e).__name__}: {e}"))
                 print(f"  ❌ FAIL  {route:40s}  exception: {e}")
     return passed, total, failures
 
@@ -684,9 +663,7 @@ def main() -> int:
     fe_total = 0
     fe_failures: list[tuple[str, int, str]] = []
     if not args.skip_frontend:
-        fe_passed, fe_total, fe_failures = run_frontend_checks(
-            args.frontend_url, args.timeout
-        )
+        fe_passed, fe_total, fe_failures = run_frontend_checks(args.frontend_url, args.timeout)
     else:
         print("\n[前端路由检查] 已跳过 (--skip-frontend)")
 
@@ -701,15 +678,13 @@ def main() -> int:
     api_status = "✅ PASS" if not api_failures else "❌ FAIL"
     fe_status = "✅ PASS" if not fe_failures else "❌ FAIL"
 
-    print(
-        f"  API  {api_passed}/{api_total} 通过 ({api_pct:.1f}%)  {api_status}"
-    )
+    print(f"  API  {api_passed}/{api_total} 通过 ({api_pct:.1f}%)  {api_status}")
     print(f"  前端 {fe_passed}/{fe_total} 通过 ({fe_pct:.1f}%)  {fe_status}")
 
     # 失败详情（最多 30 条）
     if api_failures:
         print("\n  API 失败详情:")
-        for method, path, status, detail in api_failures[:30]:
+        for method, path, _status, detail in api_failures[:30]:
             print(f"    {method:4s} {path}")
             print(f"          {detail}")
         if len(api_failures) > 30:
@@ -717,7 +692,7 @@ def main() -> int:
 
     if fe_failures:
         print("\n  前端失败详情:")
-        for route, status, detail in fe_failures[:30]:
+        for route, _status, detail in fe_failures[:30]:
             print(f"    {route}")
             print(f"          {detail}")
         if len(fe_failures) > 30:

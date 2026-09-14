@@ -209,8 +209,7 @@ async def list_alarm_silences(
             silences = [
                 s
                 for s in silences
-                if (end_dt := _parse_silence_end_time(s.get("end_time"))) is not None
-                and end_dt < now
+                if (end_dt := _parse_silence_end_time(s.get("end_time"))) is not None and end_dt < now
             ]
         elif status == "cancelled":
             silences = [s for s in silences if s.get("cancelled_at") is not None]

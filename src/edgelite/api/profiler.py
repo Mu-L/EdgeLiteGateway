@@ -61,9 +61,7 @@ async def _load_enabled_flag() -> bool:
         async with db.get_session() as session:
             from sqlalchemy import text
 
-            result = await session.execute(
-                text(f"SELECT value FROM {_PROFILER_KV_TABLE} WHERE key = 'enabled'")
-            )
+            result = await session.execute(text(f"SELECT value FROM {_PROFILER_KV_TABLE} WHERE key = 'enabled'"))
             row = result.fetchone()
             return bool(row and row[0] == "1")
     except Exception as e:
@@ -134,9 +132,7 @@ async def get_slowest(
 ):
     """返回最慢的 N 条请求记录"""
     try:
-        items = sorted(
-            _requests_buffer, key=lambda x: x.get("duration_ms", 0), reverse=True
-        )[:limit]
+        items = sorted(_requests_buffer, key=lambda x: x.get("duration_ms", 0), reverse=True)[:limit]
         return ApiResponse(data=list(items))
     except HTTPException:
         raise

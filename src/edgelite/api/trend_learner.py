@@ -218,7 +218,7 @@ async def residual_analysis(
         if predictions:
             mean_pred = sum(predictions) / len(predictions)
             variance = sum((p - mean_pred) ** 2 for p in predictions) / len(predictions)
-            std = variance ** 0.5
+            std = variance**0.5
             residual_stats = {
                 "count": len(predictions),
                 "mean": mean_pred,

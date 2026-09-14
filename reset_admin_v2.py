@@ -1,6 +1,8 @@
 """Reset EdgeLite admin password with fresh bcrypt hash."""
+
 import sqlite3
 from pathlib import Path
+
 import bcrypt
 
 db_path = Path("data/edgelite.db")

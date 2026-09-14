@@ -613,7 +613,13 @@ class DataImportService:
                 "Invalid import data: expected dict at top level, got %s",
                 type(parsed).__name__,
             )
-            return {"error": ImportResult(success=False, error_count=1, errors=[f"Invalid import data: expected dict, got {type(parsed).__name__}"])}
+            return {
+                "error": ImportResult(
+                    success=False,
+                    error_count=1,
+                    errors=[f"Invalid import data: expected dict, got {type(parsed).__name__}"],
+                )
+            }
 
         devices_data = parsed.get("devices", [])
         rules_data = parsed.get("rules", [])
@@ -624,13 +630,25 @@ class DataImportService:
                 "Invalid devices data: expected list, got %s",
                 type(devices_data).__name__,
             )
-            return {"error": ImportResult(success=False, error_count=1, errors=[f"Invalid devices data: expected list, got {type(devices_data).__name__}"])}
+            return {
+                "error": ImportResult(
+                    success=False,
+                    error_count=1,
+                    errors=[f"Invalid devices data: expected list, got {type(devices_data).__name__}"],
+                )
+            }
         if not isinstance(rules_data, list):
             logger.error(
                 "Invalid rules data: expected list, got %s",
                 type(rules_data).__name__,
             )
-            return {"error": ImportResult(success=False, error_count=1, errors=[f"Invalid rules data: expected list, got {type(rules_data).__name__}"])}
+            return {
+                "error": ImportResult(
+                    success=False,
+                    error_count=1,
+                    errors=[f"Invalid rules data: expected list, got {type(rules_data).__name__}"],
+                )
+            }
 
         device_database = getattr(self._device_repo, "_database", None)
         rule_database = getattr(self._rule_repo, "_database", None)

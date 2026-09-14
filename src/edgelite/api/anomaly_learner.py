@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from edgelite.api.deps import require_permission
-from edgelite.api.error_codes import AiErrors, CommonErrors
+from edgelite.api.error_codes import CommonErrors
 from edgelite.models.common import ApiResponse
 from edgelite.security.rbac import Permission
 

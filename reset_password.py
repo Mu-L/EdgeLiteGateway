@@ -1,14 +1,16 @@
 """Reset EdgeLite admin password directly in SQLite DB."""
+
 import sqlite3
+
 import bcrypt
 
 # New password to set
 NEW_PASSWORD = "EdgeLite@2026"
 
 # Hash the password using bcrypt (EdgeLite uses bcrypt with rounds=12)
-hashed = bcrypt.hashpw(NEW_PASSWORD.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
+hashed = bcrypt.hashpw(NEW_PASSWORD.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
-conn = sqlite3.connect('data/edgelite.db')
+conn = sqlite3.connect("data/edgelite.db")
 c = conn.cursor()
 
 # Update admin password

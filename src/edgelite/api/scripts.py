@@ -300,8 +300,7 @@ async def update_script(
             new_enabled = int(req.enabled) if req.enabled is not None else int(current["enabled"])
             await session.execute(
                 text(
-                    f"UPDATE {_SCRIPTS_TABLE} SET content=:c, description=:d, enabled=:e, updated_at=:ts "
-                    "WHERE id=:id"
+                    f"UPDATE {_SCRIPTS_TABLE} SET content=:c, description=:d, enabled=:e, updated_at=:ts WHERE id=:id"
                 ),
                 {"c": new_content, "d": new_desc, "e": new_enabled, "ts": now, "id": script_id},
             )

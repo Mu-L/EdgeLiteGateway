@@ -13,10 +13,11 @@ import asyncio
 import logging
 import uuid
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from edgelite.services.notification import get_notification_manager
 

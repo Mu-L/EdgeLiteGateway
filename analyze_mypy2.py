@@ -1,4 +1,5 @@
 """分析 mypy 错误分布，按 error_code 和 file 统计。"""
+
 import re
 from collections import Counter, defaultdict
 from pathlib import Path

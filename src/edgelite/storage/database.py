@@ -1007,8 +1007,7 @@ class Database:
                                     f"  Password: {temp_password}\n"
                                     f"  Login at: http://localhost:{_port}/login\n"
                                     f"  Password file: {password_file}\n"
-                                    "  (file auto-deleted after first successful login)\n"
-                                    + "=" * 72
+                                    "  (file auto-deleted after first successful login)\n" + "=" * 72
                                 )
                                 logger.warning(_banner)
                                 # 同时 print 确保即使日志级别过滤也能在控制台看到

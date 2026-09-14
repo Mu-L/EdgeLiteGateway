@@ -177,8 +177,7 @@ async def get_version(
 
             result = await session.execute(
                 text(
-                    f"SELECT id, section, snapshot_json, description, created_at "
-                    f"FROM {_SNAPSHOTS_TABLE} WHERE id=:vid"
+                    f"SELECT id, section, snapshot_json, description, created_at FROM {_SNAPSHOTS_TABLE} WHERE id=:vid"
                 ),
                 {"vid": version_id},
             )

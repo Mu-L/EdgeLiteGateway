@@ -18,10 +18,11 @@ import json
 import logging
 import math
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from edgelite.constants import _EXPORT_MAX_RECORDS
 from edgelite.storage.influx_storage import InfluxDBStorage
@@ -166,9 +167,7 @@ class HistoricalDataService:
         if data:
             # FIXED(严重): 原问题-非数值value导致sum()抛TypeError;
             # 修复-过滤非数值类型
-            values = [
-                v for d in data if (v := d.get("value")) is not None and isinstance(v, (int, float))
-            ]
+            values = [v for d in data if (v := d.get("value")) is not None and isinstance(v, (int, float))]
             if values:
                 result.statistics = self._calculate_statistics(values, data)
 

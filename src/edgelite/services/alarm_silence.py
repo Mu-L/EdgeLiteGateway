@@ -15,7 +15,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from edgelite.models.db import AlarmSilenceORM
@@ -92,7 +92,8 @@ class AlarmSilenceManager:
                 if active_only:
                     now = datetime.now(UTC)
                     silences = [
-                        s for s in silences
+                        s
+                        for s in silences
                         if (end_dt := _parse_iso_time(s.get("end_time", ""))) is not None
                         and end_dt > now
                         and not s.get("cancelled_at")
@@ -147,7 +148,10 @@ class AlarmSilenceManager:
                 await session.commit()
                 logger.info(
                     "Alarm silence created: id=%s, device=%s, rule=%s, operator=%s",
-                    silence_id, device_id or "*", rule_id or "*", operator,
+                    silence_id,
+                    device_id or "*",
+                    rule_id or "*",
+                    operator,
                 )
                 return _orm_to_dict(orm)
         except Exception as e:

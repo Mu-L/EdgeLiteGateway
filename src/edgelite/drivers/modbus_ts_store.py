@@ -108,7 +108,7 @@ class ModbusTsStore:
             await self._write_queue.put(None)  # 发送停止信号
             try:
                 await asyncio.wait_for(self._writer_task, timeout=5.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 self._writer_task.cancel()
             self._writer_task = None
         if self._db is not None:
@@ -248,8 +248,10 @@ class ModbusTsStore:
                         is_locked = "database is locked" in err_str.lower()
                         if is_locked and attempt < max_retries - 1:
                             # 指数退避：0.2s, 0.4s, 0.8s, 1.6s, 3.2s
-                            logger.debug("[modbus_ts_store] retry %d/%d for 'database is locked'", attempt + 1, max_retries)
-                            await asyncio.sleep(0.2 * (2 ** attempt))
+                            logger.debug(
+                                "[modbus_ts_store] retry %d/%d for 'database is locked'", attempt + 1, max_retries
+                            )
+                            await asyncio.sleep(0.2 * (2**attempt))
                             continue
                         # 非锁错误或重试次数用尽，重新抛出
                         raise

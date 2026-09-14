@@ -5,6 +5,7 @@
     python scripts/check_api_contract.py --json > scripts/contract_report.json
     python scripts/gen_api_contract_doc.py
 """
+
 from __future__ import annotations
 
 import json
@@ -111,7 +112,9 @@ def main() -> int:
     lines.append("分页端点返回 `{code, message, data, total, page, size}`。")
     lines.append("")
     lines.append("**路径参数规范化**：本文档使用 `{var}` 表示路径参数位置。例如 `/api/v1/devices/{device_id}` ")
-    lines.append("在前端可能写作 `/api/v1/devices/123`、`/api/v1/devices/${id}` 或 `/api/v1/devices/${encodeURIComponent(id)}`。")
+    lines.append(
+        "在前端可能写作 `/api/v1/devices/123`、`/api/v1/devices/${id}` 或 `/api/v1/devices/${encodeURIComponent(id)}`。"
+    )
     lines.append("")
 
     # ── 后端路由清单 ──────────────────────────────────────────────────────
@@ -285,7 +288,9 @@ def main() -> int:
     lines.append("")
     lines.append("项目已集成 `scripts/check_api_contract.py` 作为 CI 校验步骤：")
     lines.append("")
-    lines.append("- **GitHub Actions**：`.github/workflows/ci.yml` 的 `lint` job 中运行 `python scripts/check_api_contract.py`")
+    lines.append(
+        "- **GitHub Actions**：`.github/workflows/ci.yml` 的 `lint` job 中运行 `python scripts/check_api_contract.py`"
+    )
     lines.append("- **GitLab CI**：`.gitlab-ci.yml` 的 `lint` stage 中运行 `python scripts/check_api_contract.py`")
     lines.append("")
     lines.append("**退出码**：")

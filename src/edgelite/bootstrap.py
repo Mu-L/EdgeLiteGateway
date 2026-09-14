@@ -857,6 +857,7 @@ async def bootstrap_all(c: ServiceContainer, config) -> None:
     # FIXED-P0: 添加 RequestIdFilter 到根 logger，确保所有日志记录都有 request_id 字段
     # 防止驱动日志（s7/fins/mc 等）格式化时 KeyError: 'request_id'
     from edgelite.middleware.request_id import RequestIdFilter
+
     logging.getLogger().addFilter(RequestIdFilter())
 
     # FIXED: 抑制 pymodbus v3 弃用警告（ModbusDeviceContext/ModbusServerContext 等）
@@ -895,10 +896,7 @@ async def bootstrap_all(c: ServiceContainer, config) -> None:
 
         def filter(self, record: logging.LogRecord) -> bool:
             msg = record.getMessage()
-            for frag in self._SUPPRESSED_FRAGMENTS:
-                if frag in msg:
-                    return False
-            return True
+            return all(frag not in msg for frag in self._SUPPRESSED_FRAGMENTS)
 
     for _logger_name in ("mqtt", "amqtt.broker", "amqtt"):
         logging.getLogger(_logger_name).addFilter(_AmqttNoiseFilter())

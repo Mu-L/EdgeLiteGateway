@@ -550,7 +550,7 @@ class DriverRegistry:
                 restricted_builtins["__import__"] = _restricted_import
                 # exec_module 前设置 module.__builtins__，使模块级 import 和运行时延迟 import 均受限
                 # 使用 setattr 而非直接赋值：typeshed 的 ModuleType 未将 __builtins__ 声明为可写属性
-                setattr(module, "__builtins__", restricted_builtins)
+                module.__builtins__ = restricted_builtins
                 spec.loader.exec_module(module)
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)

@@ -1569,7 +1569,11 @@ async def get_ntp_config(user: dict[str, str] = Depends(require_permission(Permi
         try:
             sync_status = await _get_ntp_sync_status()
         except Exception as sync_err:
-            logger.warning("get_ntp_sync_status failed, falling back to 'unknown': %s: %s", type(sync_err).__name__, sync_err)
+            logger.warning(
+                "get_ntp_sync_status failed, falling back to 'unknown': %s: %s",
+                type(sync_err).__name__,
+                sync_err,
+            )
             sync_status = "unknown"
         from datetime import datetime
 

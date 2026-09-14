@@ -68,7 +68,6 @@ from unittest.mock import patch  # noqa: E402
 
 from edgelite.api.auth import router as auth_router  # noqa: E402
 
-
 # ─── 辅助函数 ───
 
 
@@ -141,9 +140,7 @@ def _login_mocks(user_data, verify_pwd=True):
         p.start()
     try:
         # 配置 UserRepo 实例方法
-        auth_module.UserRepo.return_value.get_by_username_with_password = AsyncMock(
-            return_value=user_data
-        )
+        auth_module.UserRepo.return_value.get_by_username_with_password = AsyncMock(return_value=user_data)
         auth_module.UserRepo.return_value.get_by_username = AsyncMock(return_value=user_data)
 
         # 配置 RateLimitRepo 类方法（所有方法返回安全默认值，避免触发限流/锁定）
@@ -217,9 +214,7 @@ class TestE2ELogin:
                     "/api/v1/auth/login",
                     json={"username": "admin", "password": "CorrectPass123!@#"},
                 )
-                assert resp.status_code == 200, (
-                    f"正确凭据登录应返回 200，实际: {resp.status_code}, 响应: {resp.text}"
-                )
+                assert resp.status_code == 200, f"正确凭据登录应返回 200，实际: {resp.status_code}, 响应: {resp.text}"
                 data = resp.json()["data"]
                 assert "access_token" in data, "响应应包含 access_token 字段"
                 assert data["access_token"] == "mock-access-token"
@@ -242,9 +237,7 @@ class TestE2ELogin:
                     "/api/v1/auth/login",
                     json={"username": "admin", "password": "WrongPass123!@#"},
                 )
-                assert resp.status_code == 401, (
-                    f"错误密码应返回 401，实际: {resp.status_code}, 响应: {resp.text}"
-                )
+                assert resp.status_code == 401, f"错误密码应返回 401，实际: {resp.status_code}, 响应: {resp.text}"
 
     @pytest.mark.asyncio
     async def test_e2e_login_missing_field(self, e2e_auth_app):
@@ -260,9 +253,7 @@ class TestE2ELogin:
                 "/api/v1/auth/login",
                 json={"username": "admin"},
             )
-            assert resp.status_code == 422, (
-                f"缺少必填字段应返回 422，实际: {resp.status_code}, 响应: {resp.text}"
-            )
+            assert resp.status_code == 422, f"缺少必填字段应返回 422，实际: {resp.status_code}, 响应: {resp.text}"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -293,14 +284,11 @@ def e2e_spa_app():
 
         排除 API/docs/ws 等后端路径，仅对前端路由返回 HTML。
         """
-        if path.startswith(
-            ("api/", "docs", "redoc", "openapi.json", "ws/", "health", "live", "ready", "metrics")
-        ):
+        if path.startswith(("api/", "docs", "redoc", "openapi.json", "ws/", "health", "live", "ready", "metrics")):
             return JSONResponse(status_code=404, content={"detail": "Not Found"})
         return HTMLResponse(
             status_code=200,
-            content="<html><head><title>EdgeLite</title></head>"
-            "<body><div id='app'>EdgeLite SPA</div></body></html>",
+            content="<html><head><title>EdgeLite</title></head><body><div id='app'>EdgeLite SPA</div></body></html>",
         )
 
     return app
@@ -322,14 +310,10 @@ class TestE2EPageSmoke:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             for route in _FRONTEND_ROUTES:
                 resp = await client.get(route)
-                assert resp.status_code == 200, (
-                    f"前端路由 {route} 应返回 HTTP 200，实际: {resp.status_code}"
-                )
+                assert resp.status_code == 200, f"前端路由 {route} 应返回 HTTP 200，实际: {resp.status_code}"
                 # 白屏检查：响应体必须非空且包含 #app 容器
                 assert len(resp.text) > 0, f"前端路由 {route} 返回空响应体，疑似白屏"
-                assert "app" in resp.text.lower(), (
-                    f"前端路由 {route} 响应体缺少 #app 容器，疑似白屏"
-                )
+                assert "app" in resp.text.lower(), f"前端路由 {route} 响应体缺少 #app 容器，疑似白屏"
 
         # 若安装了 Playwright，额外检查浏览器控制台无 JS 错误
         # 此处仅做导入检测，避免引入浏览器启动的复杂依赖（项目未将 Playwright 列为依赖）
@@ -425,17 +409,13 @@ class TestE2EGracefulDegradation:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/health")
             # 健康检查返回 503 时不应该抛异常，应正常返回 503 状态码
-            assert resp.status_code == 503, (
-                f"后端不可用时 /health 应返回 503，实际: {resp.status_code}"
-            )
+            assert resp.status_code == 503, f"后端不可用时 /health 应返回 503，实际: {resp.status_code}"
             body = resp.json()
             assert "status" in body, "503 响应应包含 status 字段供前端判断降级状态"
 
             # liveness 探针不应受依赖故障影响，应仍返回 200
             resp_live = await client.get("/health/live")
-            assert resp_live.status_code == 200, (
-                "liveness 探针不应受依赖故障影响，应仍返回 200"
-            )
+            assert resp_live.status_code == 200, "liveness 探针不应受依赖故障影响，应仍返回 200"
             assert resp_live.json().get("status") == "ok"
 
         # 步骤 4: 模拟后端恢复，验证 API 恢复可用
@@ -443,9 +423,7 @@ class TestE2EGracefulDegradation:
 
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get("/health")
-            assert resp.status_code == 200, (
-                f"后端恢复后 /health 应返回 200，实际: {resp.status_code}"
-            )
+            assert resp.status_code == 200, f"后端恢复后 /health 应返回 200，实际: {resp.status_code}"
             assert resp.json().get("status") == "healthy"
 
 
@@ -582,6 +560,4 @@ class TestE2ENo500Errors:
                 )
                 if resp.status_code == 500:
                     failed.append(f"{endpoint} -> 500 (body: {resp.text[:200]})")
-            assert not failed, (
-                "以下端点返回 500 错误，不符合质量门禁要求:\n" + "\n".join(failed)
-            )
+            assert not failed, "以下端点返回 500 错误，不符合质量门禁要求:\n" + "\n".join(failed)

@@ -8,7 +8,7 @@ import contextvars
 import json
 import logging
 import time
-from datetime import UTC, datetime  # FIXED-P1: read_points归一化需要
+from datetime import datetime  # FIXED-P1: read_points归一化需要
 from typing import Any, cast
 
 from edgelite.constants import _MAX_QUERY_SIZE
@@ -101,10 +101,12 @@ class DeviceService:
         # but external systems (e.g., ProtoForge) may send aliases (e.g., 's7', 'mqtt').
         # The normalize_protocol function exists but was not called in the device creation path.
         from edgelite.constants import normalize_protocol
+
         normalized = normalize_protocol(protocol)
         if normalized and normalized != protocol:
-            logger.info("Normalizing protocol alias '%s' -> '%s' for device %s",
-                        protocol, normalized, data.get("device_id", ""))
+            logger.info(
+                "Normalizing protocol alias '%s' -> '%s' for device %s", protocol, normalized, data.get("device_id", "")
+            )
             data["protocol"] = normalized
             protocol = normalized
         driver_class = self._registry.get_driver_class(protocol)
@@ -220,9 +222,7 @@ class DeviceService:
     ) -> tuple[list[dict], int]:
         return cast(
             tuple[list[dict], int],
-            await self._repo.list_all(
-                page, size, status, protocol, search, created_by, collect_status=collect_status
-            ),
+            await self._repo.list_all(page, size, status, protocol, search, created_by, collect_status=collect_status),
         )
 
     async def list_device_ids_by_owner(self, created_by: str) -> list[str]:

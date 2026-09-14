@@ -1,4 +1,5 @@
 """运行 mypy 并保存输出到文件。"""
+
 import subprocess
 
 result = subprocess.run(
@@ -18,6 +19,6 @@ lines = output.splitlines()
 print(f"Exit code: {result.returncode}")
 print(f"Total lines: {len(lines)}")
 if lines:
-    print(f"Last 3 lines:")
+    print("Last 3 lines:")
     for line in lines[-3:]:
         print(f"  {line}")

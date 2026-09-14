@@ -203,8 +203,6 @@ async def export(
 ):
     """导出仿真数据（json/csv 占位实现）"""
     try:
-        import json as _json
-
         fmt = (req.format or "json").lower()
         if fmt == "json":
             return ApiResponse(data={"format": "json", "payload": req.data})

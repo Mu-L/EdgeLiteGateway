@@ -2690,6 +2690,7 @@ class OpcUaDriver(DriverPlugin):
                 SecurityPolicyBasic256,
                 SecurityPolicyBasic256Sha256,
             )
+
             return {
                 "None": None,
                 "Basic128Rsa15": SecurityPolicyBasic128Rsa15,
@@ -2701,6 +2702,7 @@ class OpcUaDriver(DriverPlugin):
         # 回退：尝试旧版 API（SecurityPolicy.Basic128Rsa15 类属性）
         try:
             from asyncua.crypto.security_policies import SecurityPolicy
+
             return {
                 "None": None,
                 "Basic128Rsa15": getattr(SecurityPolicy, "Basic128Rsa15", None),

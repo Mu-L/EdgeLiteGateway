@@ -300,23 +300,13 @@ async def update_rule(
             now = datetime.now(UTC).isoformat()
             new_values = {
                 "name": req.name if req.name is not None else current["name"],
-                "source_device": req.source_device
-                if req.source_device is not None
-                else current["source_device"],
-                "source_point": req.source_point
-                if req.source_point is not None
-                else current["source_point"],
+                "source_device": req.source_device if req.source_device is not None else current["source_device"],
+                "source_point": req.source_point if req.source_point is not None else current["source_point"],
                 "condition": req.condition if req.condition is not None else current["condition"],
-                "target_device": req.target_device
-                if req.target_device is not None
-                else current["target_device"],
-                "target_point": req.target_point
-                if req.target_point is not None
-                else current["target_point"],
+                "target_device": req.target_device if req.target_device is not None else current["target_device"],
+                "target_point": req.target_point if req.target_point is not None else current["target_point"],
                 "action": req.action if req.action is not None else current["action"],
-                "enabled": 1 if req.enabled else 0
-                if req.enabled is not None
-                else int(current["enabled"]),
+                "enabled": 1 if req.enabled else 0 if req.enabled is not None else int(current["enabled"]),
             }
             await session.execute(
                 text(

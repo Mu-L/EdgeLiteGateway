@@ -340,9 +340,7 @@ class TestDriverConfigValidationContract:
             ("edgelite.drivers.mc", "McDriver"),
         ],
     )
-    def test_missing_required_fields_returns_structured_errors(
-        self, module_path: str, driver_cls_name: str
-    ):
+    def test_missing_required_fields_returns_structured_errors(self, module_path: str, driver_cls_name: str):
         """畸形: 缺失所有必填字段应返回 ConfigValidationResult.errors 非空，不崩溃。"""
         pytest.importorskip(module_path.split(".")[-1], reason=f"{module_path} not installed")
         module = __import__(module_path, fromlist=[driver_cls_name])
@@ -368,9 +366,7 @@ class TestDriverConfigValidationContract:
             ("edgelite.drivers.mc", "McDriver"),
         ],
     )
-    def test_oversized_port_returns_structured_error(
-        self, module_path: str, driver_cls_name: str
-    ):
+    def test_oversized_port_returns_structured_error(self, module_path: str, driver_cls_name: str):
         """超长: 端口号 99999（超出 65535 上限）应返回结构化错误。"""
         module = __import__(module_path, fromlist=[driver_cls_name])
         driver_cls = getattr(module, driver_cls_name)
@@ -400,9 +396,7 @@ class TestDriverConfigValidationContract:
             ("edgelite.drivers.mc", "McDriver"),
         ],
     )
-    def test_truncated_config_with_none_values_handled(
-        self, module_path: str, driver_cls_name: str
-    ):
+    def test_truncated_config_with_none_values_handled(self, module_path: str, driver_cls_name: str):
         """截断: 配置字段值为 None（类似截断的空值）不应导致崩溃。"""
         module = __import__(module_path, fromlist=[driver_cls_name])
         driver_cls = getattr(module, driver_cls_name)
@@ -462,15 +456,11 @@ class TestProtocolDriverAvailabilityContract:
             pytest.skip(f"驱动类 {driver_cls_name} 不存在于 {module_path}")
         # 契约: 驱动类必须有 plugin_name 和 supported_protocols
         assert hasattr(driver_cls, "plugin_name"), f"{driver_cls_name} 必须有 plugin_name 属性"
-        assert hasattr(driver_cls, "supported_protocols"), (
-            f"{driver_cls_name} 必须有 supported_protocols 属性"
-        )
+        assert hasattr(driver_cls, "supported_protocols"), f"{driver_cls_name} 必须有 supported_protocols 属性"
         assert hasattr(driver_cls, "config_schema"), f"{driver_cls_name} 必须有 config_schema 属性"
 
     @pytest.mark.parametrize("module_path,driver_cls_name", PROTOCOL_DRIVERS)
-    def test_driver_validate_config_returns_structured_result(
-        self, module_path: str, driver_cls_name: str
-    ):
+    def test_driver_validate_config_returns_structured_result(self, module_path: str, driver_cls_name: str):
         """契约: 每个驱动的 validate_config 必须返回 ConfigValidationResult（结构化）。"""
         try:
             module = __import__(module_path, fromlist=[driver_cls_name])

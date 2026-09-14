@@ -18,7 +18,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from edgelite.api.deps import require_permission
-from edgelite.api.error_codes import CommonErrors, DatabaseErrors
+from edgelite.api.error_codes import DatabaseErrors
 from edgelite.models.common import ApiResponse
 from edgelite.security.rbac import Permission
 

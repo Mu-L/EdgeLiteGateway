@@ -178,6 +178,9 @@ ignore = ["B008", "B027", "N812", "N813", "N814", "N806", "N801", "N818",
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
 stubPath = "./stubs"
+# FIXED(ci): 类型门禁范围对齐 [tool.ruff] extend-exclude 的"产品代码"哲学，只覆盖 src/。
+# tests/（尤其 *_auto.py 生成的测试）由 pytest 运行时覆盖，不纳入静态类型门禁。
+include = ["src"]
 reportMissingImports = "warning"
 reportMissingModuleSource = "none"
 reportArgumentType = "warning"

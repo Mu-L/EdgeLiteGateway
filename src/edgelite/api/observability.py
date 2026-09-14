@@ -386,10 +386,7 @@ async def get_trace_stats(
             from sqlalchemy import text
 
             result = await session.execute(
-                text(
-                    f"SELECT COUNT(*), AVG(duration_ms), MAX(duration_ms) "
-                    f"FROM {_TRACES_TABLE} WHERE node=:node"
-                ),
+                text(f"SELECT COUNT(*), AVG(duration_ms), MAX(duration_ms) FROM {_TRACES_TABLE} WHERE node=:node"),
                 {"node": node},
             )
             r = result.fetchone()

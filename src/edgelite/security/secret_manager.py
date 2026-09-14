@@ -611,10 +611,7 @@ def init_secret_manager(
                 # 原行为：仅打印警告后以明文模式运行，敏感配置无加密保护
                 # 新行为：自动生成密钥并持久化，首次运行后后续重启自动加载
                 resolved_key_file = _MASTER_KEY_FILE
-                logger.info(
-                    "SecretManager 未配置主密钥（DEV_MODE=true），"
-                    "自动生成并持久化到 data/.master_key"
-                )
+                logger.info("SecretManager 未配置主密钥（DEV_MODE=true），自动生成并持久化到 data/.master_key")
             else:
                 # 生产模式：记录 ERROR 并拒绝启动
                 logger.error(

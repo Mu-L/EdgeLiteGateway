@@ -84,8 +84,8 @@ class ContextFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """将上下文字段注入日志记录（线程安全快照读取）。"""
         # FIXED-P0: 始终设置 request_id 默认值，防止格式化器 %(request_id)s 报 KeyError
-        if not hasattr(record, 'request_id'):
-            record.request_id = '-'
+        if not hasattr(record, "request_id"):
+            record.request_id = "-"
         # FIXED-P2: 复制context快照，避免迭代期间其他线程修改字典导致RuntimeError
         with self._lock:
             context_snapshot = dict(self._context)
@@ -130,7 +130,7 @@ class StructuredLogger:
         else:
             console_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"))
         console_handler.addFilter(self._context_filter)
-        setattr(console_handler, "_edgelite_handler", True)  # FIXED-P2: 标记edgelite自己的handler，便于后续只移除自己的
+        console_handler._edgelite_handler = True  # FIXED-P2: 标记edgelite自己的handler，便于后续只移除自己的
         root_logger.addHandler(console_handler)
 
         app_log = self._log_dir / "edgelite.log"
@@ -142,7 +142,7 @@ class StructuredLogger:
         )
         file_handler.setFormatter(StructuredFormatter())
         file_handler.addFilter(self._context_filter)
-        setattr(file_handler, "_edgelite_handler", True)
+        file_handler._edgelite_handler = True
         root_logger.addHandler(file_handler)
 
         error_log = self._log_dir / "edgelite-error.log"
@@ -155,7 +155,7 @@ class StructuredLogger:
         error_handler.setFormatter(StructuredFormatter())
         error_handler.setLevel(logging.ERROR)
         error_handler.addFilter(self._context_filter)
-        setattr(error_handler, "_edgelite_handler", True)
+        error_handler._edgelite_handler = True
         root_logger.addHandler(error_handler)
 
     def set_context(self, **kwargs: Any) -> None:

@@ -6,9 +6,15 @@ ProtocolBridge / MappingRule dataclass 提供协议桥接配置管理。
 注意：
 - ProtocolBridgeManager 通过 _sync_loop 后台运行桥接，本 API 仅管理配置。
 - 前端 BridgeConfig 形状: {name, mappings: BridgeMapping[], enabled}
-- 内部 ProtocolBridge 数据: {bridge_id, source_protocol, target_protocol, source_config, target_config, mapping_rules, enabled}
-- 前端 BridgeMapping 字段: {source_protocol, source_device_id, source_point, target_protocol, target_device_id, target_point, transform?, enabled}
-- 内部 MappingRule 字段: {rule_id, source_protocol, target_protocol, source_device, source_point, target_device, target_point, data_type, scale, offset, enabled}
+- 内部 ProtocolBridge 数据:
+  {bridge_id, source_protocol, target_protocol, source_config,
+   target_config, mapping_rules, enabled}
+- 前端 BridgeMapping 字段:
+  {source_protocol, source_device_id, source_point,
+   target_protocol, target_device_id, target_point, transform?, enabled}
+- 内部 MappingRule 字段:
+  {rule_id, source_protocol, target_protocol, source_device,
+   source_point, target_device, target_point, data_type, scale, offset, enabled}
 """
 
 from __future__ import annotations
@@ -17,7 +23,7 @@ import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from edgelite.api.deps import PaginationDep, require_permission

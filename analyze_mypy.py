@@ -1,6 +1,7 @@
 """分析 mypy 错误分布，按 error_code 和 file 统计。"""
+
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 content = Path("mypy_current.txt").read_text(encoding="utf-8")

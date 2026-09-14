@@ -142,7 +142,9 @@ class SystemService:
             rule_enabled = 0
 
         # 告警统计
-        _, firing_count = cast("tuple[list[dict], int]", await self._alarm_repo.list_all(page=1, size=1, status="firing"))
+        _, firing_count = cast(
+            "tuple[list[dict], int]", await self._alarm_repo.list_all(page=1, size=1, status="firing")
+        )
 
         uptime = int(time.time() - self._start_time)
 
@@ -415,7 +417,9 @@ class SystemService:
         devices: list[dict] = []
         page = 1
         while True:
-            batch, total = cast("tuple[list[dict], int]", await self._device_repo.list_all(page=page, size=_EXPORT_QUERY_SIZE))
+            batch, total = cast(
+                "tuple[list[dict], int]", await self._device_repo.list_all(page=page, size=_EXPORT_QUERY_SIZE)
+            )
             devices.extend(batch)
             if len(devices) >= total or not batch:
                 break
@@ -424,7 +428,9 @@ class SystemService:
         rules: list[dict] = []
         page = 1
         while True:
-            batch, total = cast("tuple[list[dict], int]", await self._rule_repo.list_all(page=page, size=_EXPORT_QUERY_SIZE))
+            batch, total = cast(
+                "tuple[list[dict], int]", await self._rule_repo.list_all(page=page, size=_EXPORT_QUERY_SIZE)
+            )
             rules.extend(batch)
             if len(rules) >= total or not batch:
                 break
@@ -433,7 +439,9 @@ class SystemService:
         users: list[dict] = []
         page = 1
         while True:
-            batch, total = cast("tuple[list[dict], int]", await self._user_repo.list_all(page=page, size=_EXPORT_QUERY_SIZE))
+            batch, total = cast(
+                "tuple[list[dict], int]", await self._user_repo.list_all(page=page, size=_EXPORT_QUERY_SIZE)
+            )
             users.extend(batch)
             if len(users) >= total or not batch:
                 break

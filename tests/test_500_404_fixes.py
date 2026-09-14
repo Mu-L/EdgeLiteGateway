@@ -42,8 +42,10 @@ async def test_check_device_owner_db_error_returns_503():
     fake_state.device_service.get_device = AsyncMock(return_value=device)
     fake_state.database = MagicMock()
     fake_state.database.write_lock = MagicMock()
-    with patch("edgelite.app._app_state", fake_state), \
-         patch("edgelite.storage.sqlite_repo.ResourceShareRepo") as MockRepo:
+    with (
+        patch("edgelite.app._app_state", fake_state),
+        patch("edgelite.storage.sqlite_repo.ResourceShareRepo") as MockRepo,
+    ):
         mock_repo = MockRepo.return_value
         mock_repo.check_user_has_access = AsyncMock(side_effect=RuntimeError("DB locked"))
         with pytest.raises(HTTPException) as exc:
@@ -77,9 +79,7 @@ async def test_get_accessible_device_ids_db_error_returns_503():
     user = _make_user(role="viewer", user_id="u2")
 
     fake_state = MagicMock()
-    fake_state.device_service.list_device_ids_by_owner = AsyncMock(
-        side_effect=RuntimeError("DB locked")
-    )
+    fake_state.device_service.list_device_ids_by_owner = AsyncMock(side_effect=RuntimeError("DB locked"))
     with patch("edgelite.app._app_state", fake_state):
         with pytest.raises(HTTPException) as exc:
             await _get_accessible_device_ids_for_alarms(user)
@@ -116,9 +116,7 @@ def test_new_module_importable_and_prefix_correct(module_path, expected_prefix):
 
     mod = importlib.import_module(module_path)
     assert hasattr(mod, "router"), f"{module_path} 缺少 router 属性"
-    assert mod.router.prefix == expected_prefix, (
-        f"{module_path} prefix={mod.router.prefix!r} 期望 {expected_prefix!r}"
-    )
+    assert mod.router.prefix == expected_prefix, f"{module_path} prefix={mod.router.prefix!r} 期望 {expected_prefix!r}"
     route_paths = [r.path for r in mod.router.routes]
     assert len(route_paths) > 0, f"{module_path} 无任何路由"
 
@@ -351,9 +349,8 @@ def test_data_stats_service_not_ready_returns_503():
 def _read_frontend_index():
     """读取前端 index.ts 内容"""
     import os
-    frontend_index = os.path.join(
-        os.path.dirname(__file__), "..", "web", "src", "api", "index.ts"
-    )
+
+    frontend_index = os.path.join(os.path.dirname(__file__), "..", "web", "src", "api", "index.ts")
     if not os.path.exists(frontend_index):
         pytest.skip("前端 index.ts 不存在")
     with open(frontend_index, encoding="utf-8") as f:
@@ -363,6 +360,7 @@ def _read_frontend_index():
 def test_frontend_no_app_update_api_call():
     """404修复: 前端 index.ts 不再调用 /app-update/* 路径（注释除外）"""
     import re
+
     content = _read_frontend_index()
     # 实际调用形式：http.get('/app-update/...') 或 http.post('/app-update/...')
     # 兼容 TypeScript 泛型：http.get<ApiResponse<any>>('/app-update/...')
@@ -377,6 +375,7 @@ def test_frontend_no_app_update_api_call():
 def test_frontend_no_resources_api_call():
     """404修复: 前端 index.ts 不再调用 /resources/share 等错误路径"""
     import re
+
     content = _read_frontend_index()
     api_call_pattern = r"http\.(get|post|put|delete)\(\s*['\"`]/resources/(share|unshare|shares|transfer)"
     matches = re.findall(api_call_pattern, content)
@@ -386,6 +385,7 @@ def test_frontend_no_resources_api_call():
 def test_frontend_self_test_disabled():
     """404修复: 前端 selfTest/acceptanceReport 不再调用后端"""
     import re
+
     content = _read_frontend_index()
     api_call_pattern = r"http\.(get|post)\(\s*['\"`]/self-test/"
     matches = re.findall(api_call_pattern, content)

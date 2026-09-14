@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import contextlib
 import json
 import logging
@@ -27,7 +28,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from functools import wraps
-from typing import Any, List
+from typing import Any
 
 from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
@@ -818,7 +819,7 @@ class BaseRepo:
         from edgelite.storage.database import Database
 
         # FIXED-mypy: _database 推断为 Database 类型，None 赋值需显式声明 Optional
-        self._database: "Database | None" = None
+        self._database: Database | None = None
         if isinstance(session_or_db, Database):
             self._database = session_or_db
             self._external_session: AsyncSession | None = None
@@ -1435,10 +1436,10 @@ class DeviceRepo(BaseRepo):
     # DataImportService 调用 self._device_repo.upsert_bulk(...) 期望 DeviceRepo 有此方法
     async def upsert_bulk(
         self,
-        records: List[dict],
+        records: list[dict],
         session: AsyncSession,
         skip_existing: bool = True,
-    ) -> tuple[int, int, List[str]]:
+    ) -> tuple[int, int, list[str]]:
         """Bulk upsert devices within an external transaction session.
 
         Alias for ``bulk_upsert_in_session`` to provide a uniform interface
@@ -1875,7 +1876,9 @@ class RuleRepo(BaseRepo):
         severity: str | None = None,
         created_by: str | None = None,
         cursor: str | None = None,
-    ) -> tuple[List[dict], int] | tuple[List[dict], int, str | None]:  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
+    ) -> (
+        tuple[builtins.list[dict], int] | tuple[builtins.list[dict], int, str | None]
+    ):  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
         try:
             async with self._auto_session() as session:
                 query = select(RuleORM)
@@ -1931,7 +1934,9 @@ class RuleRepo(BaseRepo):
         severity: str | None = None,
         created_by: str | None = None,
         cursor: str | None = None,
-    ) -> tuple[List[dict], int] | tuple[List[dict], int, str | None]:  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
+    ) -> (
+        tuple[builtins.list[dict], int] | tuple[builtins.list[dict], int, str | None]
+    ):  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
         """FIXED-P0: 添加 list_all 方法，多个Service调用此方法但之前不存在"""
         return await self.list(
             page=page,
@@ -2023,7 +2028,9 @@ class RuleRepo(BaseRepo):
                 "Edge rule cleanup for %s failed: %s", rule_id, e
             )  # FIXED-P0: 原问题-cleanup异常仅log.debug，运维无法发现孤儿规则；升级为log.error
 
-    async def list_by_device(self, device_id: str) -> List[dict]:  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
+    async def list_by_device(
+        self, device_id: str
+    ) -> builtins.list[dict]:  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
         # FIXED: 原问题-RuleRepo.list_by_device无try-except保护，被evaluator调用
         try:
             async with self._auto_session() as session:
@@ -2036,7 +2043,9 @@ class RuleRepo(BaseRepo):
             logger.error("RuleRepo.list_by_device failed: %s", e)
             raise RuntimeError(f"RuleRepo.list_by_device failed for device_id={device_id}: {e}") from e
 
-    async def list_enabled_by_point(self, device_id: str, point_name: str) -> List[dict]:  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
+    async def list_enabled_by_point(
+        self, device_id: str, point_name: str
+    ) -> builtins.list[dict]:  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
         try:
             async with self._auto_session() as session:
                 result = await session.execute(
@@ -2051,10 +2060,10 @@ class RuleRepo(BaseRepo):
 
     async def upsert_bulk(
         self,
-        records: List[dict],  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
+        records: builtins.list[dict],  # FIXED-mypy: 类作用域内 list 被 self.list 方法遮蔽，使用 typing.List
         session: AsyncSession,
         skip_existing: bool = True,
-    ) -> tuple[int, int, List[str]]:
+    ) -> tuple[int, int, builtins.list[str]]:
         """Bulk upsert rules within an external transaction session (no commit).
 
         FIXED-ATOMIC-RESTORE: Provides the single-session atomic restore path.
@@ -2067,7 +2076,7 @@ class RuleRepo(BaseRepo):
         """
         created = 0
         skipped = 0
-        errors: List[str] = [""] * len(records)  # FIXED-mypy: 使用 List[str] 避免 list 被 RuleRepo.list 遮蔽
+        errors: list[str] = [""] * len(records)  # FIXED-mypy: 使用 List[str] 避免 list 被 RuleRepo.list 遮蔽
 
         # FIXED(严重-R2): 原问题-循环内逐条 SELECT 判断存在性，N条记录 N次查询
         # 修复-预加载所有已存在的 rule_id 到字典，循环中直接查内存

@@ -953,7 +953,7 @@ async def export_devices(
     try:
         if user["role"] != "admin":
             accessible_ids = await _get_accessible_device_ids(svc, user)
-            for did in (body.device_ids or []):
+            for did in body.device_ids or []:
                 if accessible_ids is not None and did not in accessible_ids:
                     raise HTTPException(status_code=403, detail=AuthzErrors.RESOURCE_OWNERSHIP_DENIED)
         # R9-S-07 修复: 直接使用字典列表传递，避免 json.dumps/loads 往返

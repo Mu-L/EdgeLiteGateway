@@ -201,9 +201,7 @@ async def cancel_ota(
         return ApiResponse(
             data={
                 "cancelled": bool(result),
-                "in_progress": bool(
-                    getattr(mgr, "in_progress", False) or getattr(mgr, "_in_progress", False)
-                ),
+                "in_progress": bool(getattr(mgr, "in_progress", False) or getattr(mgr, "_in_progress", False)),
             }
         )
     except HTTPException:

@@ -1,4 +1,5 @@
 """Clear EdgeLite rate limiter state."""
+
 import sqlite3
 from pathlib import Path
 

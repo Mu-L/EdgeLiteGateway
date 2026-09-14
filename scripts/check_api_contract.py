@@ -166,18 +166,12 @@ class ContractReport:
 
 def is_infrastructure_path(path: str) -> bool:
     """判断路径是否属于基础设施白名单。"""
-    for pat in WHITELIST_PATTERNS:
-        if pat.match(path):
-            return True
-    return False
+    return any(pat.match(path) for pat in WHITELIST_PATTERNS)
 
 
 def is_ws_path(path: str) -> bool:
     """判断是否为 WebSocket 路径。"""
-    for pat in WS_WHITELIST_PATTERNS:
-        if pat.match(path):
-            return True
-    return False
+    return any(pat.match(path) for pat in WS_WHITELIST_PATTERNS)
 
 
 def normalize_path(path: str) -> str:
@@ -259,9 +253,7 @@ def _extract_router_prefixes(tree: ast.Module) -> dict[str, str]:
     return prefixes
 
 
-def _decorator_route_info(
-    dec: ast.expr, router_prefixes: dict[str, str]
-) -> tuple[str, str, str] | None:
+def _decorator_route_info(dec: ast.expr, router_prefixes: dict[str, str]) -> tuple[str, str, str] | None:
     """解析装饰器，返回 (method, full_path, response_model) 或 None。
 
     支持形式：
@@ -659,7 +651,7 @@ def parse_url_constants(content: str) -> dict[str, str]:
                 while pos < len(block_text) and block_text[pos] in " \t\n":
                     pos += 1
                 # 期望 =>
-                if pos + 1 < len(block_text) and block_text[pos:pos + 2] == "=>":
+                if pos + 1 < len(block_text) and block_text[pos : pos + 2] == "=>":
                     pos += 2
                     while pos < len(block_text) and block_text[pos] in " \t\n":
                         pos += 1
@@ -671,7 +663,12 @@ def parse_url_constants(content: str) -> dict[str, str]:
                             if block_text[pos] == "\\":
                                 pos += 2
                                 continue
-                            if quote == "`" and block_text[pos] == "$" and pos + 1 < len(block_text) and block_text[pos + 1] == "{":
+                            if (
+                                quote == "`"
+                                and block_text[pos] == "$"
+                                and pos + 1 < len(block_text)
+                                and block_text[pos + 1] == "{"
+                            ):
                                 pos += 2
                                 idepth = 1
                                 while pos < len(block_text) and idepth > 0:
@@ -820,9 +817,7 @@ def _extract_first_arg(content: str, paren_pos: int) -> tuple[str | None, int, i
     return content[arg_start:pos].strip(), pos, pos
 
 
-def _resolve_url_arg(
-    arg: str, url_constants: dict[str, str]
-) -> tuple[str, bool]:
+def _resolve_url_arg(arg: str, url_constants: dict[str, str]) -> tuple[str, bool]:
     """将 URL 参数表达式解析为完整路径字符串。
 
     返回 (full_path, unresolved)。
@@ -860,9 +855,7 @@ def _resolve_url_arg(
     return arg, True
 
 
-def parse_frontend_file(
-    file_path: Path, rel_path: str, url_constants: dict[str, str]
-) -> list[FrontendCall]:
+def parse_frontend_file(file_path: Path, rel_path: str, url_constants: dict[str, str]) -> list[FrontendCall]:
     """解析前端 TS 文件，提取所有 http.METHOD 调用。"""
     try:
         content = file_path.read_text(encoding="utf-8")
@@ -1086,7 +1079,7 @@ def compare_contracts(
     for key, calls in frontend_idx.items():
         if key not in backend_idx:
             # 检查后端是否有任意方法匹配该路径（method 不匹配但路径匹配）
-            path_match = any(k[1] == key[1] for k in backend_idx.keys())
+            path_match = any(k[1] == key[1] for k in backend_idx)
             for c in calls:
                 if path_match:
                     # method 不匹配，仍视为 404（但记录路径有匹配）
@@ -1104,9 +1097,7 @@ def compare_contracts(
     return frontend_404, backend_dead
 
 
-def compare_ws(
-    backend_ws: list[BackendRoute], frontend_ws: list[FrontendCall]
-) -> list[FrontendCall]:
+def compare_ws(backend_ws: list[BackendRoute], frontend_ws: list[FrontendCall]) -> list[FrontendCall]:
     """比对 WebSocket 路由，返回前端调用但后端未定义的 WS 列表。"""
     backend_paths = {normalize_path(r.path) for r in backend_ws}
     unmatched: list[FrontendCall] = []
@@ -1176,13 +1167,9 @@ def render_markdown_report(report: ContractReport, root: Path) -> str:
         lines.append("| Method | Backend Path | Module | File |")
         lines.append("|--------|--------------|--------|------|")
         # 按模块分组排序
-        sorted_dead = sorted(
-            report.backend_dead, key=lambda r: (r.module, r.method, r.path)
-        )
+        sorted_dead = sorted(report.backend_dead, key=lambda r: (r.module, r.method, r.path))
         for r in sorted_dead:
-            lines.append(
-                f"| {r.method} | `{r.path}` | {r.module} | `{r.file}` |"
-            )
+            lines.append(f"| {r.method} | `{r.path}` | {r.module} | `{r.file}` |")
         lines.append("")
 
     # ── 警告：WS 不匹配 ──
@@ -1205,7 +1192,9 @@ def render_markdown_report(report: ContractReport, root: Path) -> str:
     else:
         lines.append("**Result: [PASS]**")
     lines.append("")
-    lines.append(f"- Errors (404 risk / undefined constants): {len(report.frontend_404) + len(report.undefined_url_constants)}")
+    lines.append(
+        f"- Errors (404 risk / undefined constants): {len(report.frontend_404) + len(report.undefined_url_constants)}"
+    )
     lines.append(f"- Warnings (dead code / unmatched WS): {len(report.backend_dead) + len(report.ws_unmatched)}")
     lines.append("")
 
@@ -1257,9 +1246,7 @@ def run_check(root: Path) -> ContractReport:
     backend_http, backend_ws = collect_backend_routes(root)
     frontend_http, frontend_ws, undefined_calls = collect_frontend_calls(root)
 
-    frontend_404, backend_dead = compare_contracts(
-        backend_http, frontend_http, undefined_calls
-    )
+    frontend_404, backend_dead = compare_contracts(backend_http, frontend_http, undefined_calls)
     ws_unmatched = compare_ws(backend_ws, frontend_ws)
 
     return ContractReport(
@@ -1275,9 +1262,7 @@ def run_check(root: Path) -> ContractReport:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="EdgeLite API contract checker (static analysis)"
-    )
+    parser = argparse.ArgumentParser(description="EdgeLite API contract checker (static analysis)")
     parser.add_argument(
         "--root",
         type=str,

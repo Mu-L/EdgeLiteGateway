@@ -109,9 +109,7 @@ async def verify_signature(
                 try:
                     sig_bytes = base64.b64decode(req.signature)
                 except Exception as exc:
-                    raise HTTPException(
-                        status_code=400, detail="ERR_COMMON_VALIDATION_FAILED"
-                    ) from exc
+                    raise HTTPException(status_code=400, detail="ERR_COMMON_VALIDATION_FAILED") from exc
 
                 if isinstance(public_key, rsa.RSAPublicKey):
                     public_key.verify(
@@ -125,9 +123,7 @@ async def verify_signature(
                     public_key.verify(sig_bytes, data, ec.ECDSA(hashes.SHA256()))
                     verified = True
                 else:
-                    raise HTTPException(
-                        status_code=400, detail="ERR_COMMON_VALIDATION_FAILED"
-                    ) from None
+                    raise HTTPException(status_code=400, detail="ERR_COMMON_VALIDATION_FAILED") from None
                 return ApiResponse(
                     data={
                         "verified": verified,
@@ -226,11 +222,7 @@ async def generate_manifest(
             raise HTTPException(status_code=400, detail="ERR_COMMON_VALIDATION_FAILED") from exc
 
         # 附加 sha256 作为通用 fallback
-        sha256_hash = (
-            primary_hash
-            if algorithm == "sha256"
-            else _compute_file_hash(req.firmware_path, "sha256")
-        )
+        sha256_hash = primary_hash if algorithm == "sha256" else _compute_file_hash(req.firmware_path, "sha256")
         manifest: dict[str, Any] = {
             "firmware_path": req.firmware_path,
             "size_bytes": _file_size(req.firmware_path),

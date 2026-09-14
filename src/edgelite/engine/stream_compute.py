@@ -88,7 +88,9 @@ class TumblingWindow:
         if self._window_start is None:
             self._window_start = now_ts
 
-        if self._buffer.maxlen is not None and len(self._buffer) >= self._buffer.maxlen and not self._maxlen_warned:  # FIXED-P2: W15 缓冲区满时告警
+        if (
+            self._buffer.maxlen is not None and len(self._buffer) >= self._buffer.maxlen and not self._maxlen_warned
+        ):  # FIXED-P2: W15 缓冲区满时告警
             logger.warning("TumblingWindow buffer full (maxlen=%d), data may be dropped", self._buffer.maxlen)
             self._maxlen_warned = True
         self._buffer.append(event)

@@ -488,9 +488,9 @@ async def rollback_model(
 
 import json as _json
 import uuid as _uuid
-from datetime import UTC as _UTC, datetime as _datetime
+from datetime import UTC as _UTC
+from datetime import datetime as _datetime
 
-from fastapi import Body as _Body
 from fastapi import Query as _Query
 
 _AB_TEST_TABLE = "ai_ab_tests"
@@ -806,18 +806,13 @@ async def promote_ab_test(
             from sqlalchemy import text
 
             result = await session.execute(
-                text(
-                    f"UPDATE {_AB_TEST_TABLE} SET promoted_model=:m, status='promoted', updated_at=:ts "
-                    "WHERE id=:id"
-                ),
+                text(f"UPDATE {_AB_TEST_TABLE} SET promoted_model=:m, status='promoted', updated_at=:ts WHERE id=:id"),
                 {"m": req.model, "ts": now, "id": test_id},
             )
             if result.rowcount == 0:
                 raise HTTPException(status_code=404, detail=AiErrors.MODEL_NOT_FOUND)
             await session.commit()
-        return ApiResponse(
-            data={"id": test_id, "promoted_model": req.model, "status": "promoted", "updated_at": now}
-        )
+        return ApiResponse(data={"id": test_id, "promoted_model": req.model, "status": "promoted", "updated_at": now})
     except HTTPException:
         raise
     except Exception as e:
@@ -1207,9 +1202,7 @@ async def get_latency_stats(
 
         svc = getattr(_app_state, "ai_service", None)
         if svc is None:
-            return ApiResponse(
-                data={"model_id": model_id, "count": 0, "avg_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0}
-            )
+            return ApiResponse(data={"model_id": model_id, "count": 0, "avg_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0})
         getter = getattr(svc, "get_latency_stats", None)
         if callable(getter):
             import asyncio as _asyncio
@@ -1218,9 +1211,7 @@ async def get_latency_stats(
             if isinstance(data, dict):
                 data.setdefault("model_id", model_id)
                 return ApiResponse(data=data)
-        return ApiResponse(
-            data={"model_id": model_id, "count": 0, "avg_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0}
-        )
+        return ApiResponse(data={"model_id": model_id, "count": 0, "avg_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0})
     except HTTPException:
         raise
     except Exception as e:

@@ -355,11 +355,11 @@ async def update_wecom(
             "webhook_url": config.notify.wechat.webhook_url,
         }
 
-        setattr(config.notify.wechat, "enabled", cfg.enabled)
-        setattr(config.notify.wechat, "name", cfg.name)
+        config.notify.wechat.enabled = cfg.enabled
+        config.notify.wechat.name = cfg.name
         config.notify.wechat.webhook_url = cfg.webhook_url
-        setattr(config.notify.wechat, "max_per_minute", cfg.max_per_minute)
-        setattr(config.notify.wechat, "cooldown_seconds", cfg.cooldown_seconds)
+        config.notify.wechat.max_per_minute = cfg.max_per_minute
+        config.notify.wechat.cooldown_seconds = cfg.cooldown_seconds
 
         save_config(config)
         logger.info("WeCom config updated by %s", user["username"])
@@ -417,8 +417,8 @@ async def update_email(
             "from_address": config.notify.email.from_addr,
         }
 
-        setattr(config.notify.email, "enabled", cfg.enabled)
-        setattr(config.notify.email, "name", cfg.name)
+        config.notify.email.enabled = cfg.enabled
+        config.notify.email.name = cfg.name
         config.notify.email.smtp_host = cfg.smtp_host
         config.notify.email.smtp_port = cfg.smtp_port
         config.notify.email.smtp_user = cfg.smtp_user
@@ -426,7 +426,7 @@ async def update_email(
         config.notify.email.from_addr = cfg.from_address
         config.notify.email.to_addrs = cfg.to_addresses
         config.notify.email.use_tls = cfg.use_tls
-        setattr(config.notify.email, "use_ssl", cfg.use_ssl)
+        config.notify.email.use_ssl = cfg.use_ssl
         config.notify.email.max_per_minute = cfg.max_per_minute
         config.notify.email.cooldown_seconds = cfg.cooldown_seconds
 
@@ -604,8 +604,12 @@ async def test_channel(
                 (config_override or {}).get("from_address", "") if config_override else notify_config.email.from_addr
             )
             to_addresses = (config_override or {}).get("to_addresses") or notify_config.email.to_addrs
-            use_tls = (config_override or {}).get("use_tls", True) if config_override else notify_config.email.use_tls
-            use_ssl = (config_override or {}).get("use_ssl", False) if config_override else getattr(notify_config.email, "use_ssl", False)
+            if config_override:
+                use_tls = (config_override or {}).get("use_tls", True)
+                use_ssl = (config_override or {}).get("use_ssl", False)
+            else:
+                use_tls = notify_config.email.use_tls
+                use_ssl = getattr(notify_config.email, "use_ssl", False)
 
             if not smtp_host:
                 raise HTTPException(status_code=400, detail=NotifyErrors.SMTP_NOT_CONFIGURED)

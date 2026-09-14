@@ -35,6 +35,7 @@ async def query_audit_logs(
     # FIXED: pagination 可能为 None（Annotated + = None 在某些 FastAPI 版本下不注入依赖）
     if pagination is None:
         from edgelite.models.common import PaginationParams
+
         pagination = PaginationParams()
 
     # FIXED(一般): 原问题-user_id 查询参数未做归属校验，任何认证用户可查询任意其他 user_id 的审计日志;

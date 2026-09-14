@@ -23,9 +23,7 @@ SCRIPT_PATH = PROJECT_ROOT / "scripts" / "check_api_contract.py"
 
 def _load_contract_module():
     """以 importlib 方式加载 check_api_contract 模块，避免污染 sys.path。"""
-    spec = importlib.util.spec_from_file_location(
-        "check_api_contract", SCRIPT_PATH
-    )
+    spec = importlib.util.spec_from_file_location("check_api_contract", SCRIPT_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     # 必须先注册到 sys.modules，否则 @dataclass 装饰器在 Python 3.12 上
@@ -97,9 +95,7 @@ def test_contract_check_passes():
         errors="replace",
     )
     assert result.returncode == 0, (
-        f"contract check failed with exit code {result.returncode}\n"
-        f"stdout:\n{result.stdout}\n"
-        f"stderr:\n{result.stderr}"
+        f"contract check failed with exit code {result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
 
 
@@ -134,13 +130,9 @@ def test_backend_routes_extracted(contract_report):
     assert hasattr(sample, "module"), "route missing 'module' field"
 
     # 4. 大多数路由应以 /api/v1/ 开头（除根级 health/live/ready/metrics 外）
-    api_v1_routes = [
-        r for r in contract_report.backend_routes
-        if r.path.startswith("/api/v1/")
-    ]
+    api_v1_routes = [r for r in contract_report.backend_routes if r.path.startswith("/api/v1/")]
     assert len(api_v1_routes) > 90, (
-        f"expected most routes under /api/v1/, got {len(api_v1_routes)}/"
-        f"{len(contract_report.backend_routes)}"
+        f"expected most routes under /api/v1/, got {len(api_v1_routes)}/{len(contract_report.backend_routes)}"
     )
 
     # 5. 校验关键模块（devices/auth/system）的路由存在
@@ -184,29 +176,19 @@ def test_frontend_calls_extracted(contract_report):
     assert hasattr(sample, "line"), "call missing 'line' field"
 
     # 4. 大多数调用路径应以 /api/v1/ 开头
-    api_v1_calls = [
-        c for c in contract_report.frontend_calls
-        if c.path.startswith("/api/v1/")
-    ]
+    api_v1_calls = [c for c in contract_report.frontend_calls if c.path.startswith("/api/v1/")]
     assert len(api_v1_calls) > 90, (
-        f"expected most calls under /api/v1/, got {len(api_v1_calls)}/"
-        f"{len(contract_report.frontend_calls)}"
+        f"expected most calls under /api/v1/, got {len(api_v1_calls)}/{len(contract_report.frontend_calls)}"
     )
 
     # 5. 不应有 TypeScript 泛型残留（如 http.get<ApiResponse<...>>(url) 中的 <...>）
     for c in contract_report.frontend_calls:
-        assert "<" not in c.path, (
-            f"path contains '<' (TS generic not stripped?): {c.path}"
-        )
-        assert ">" not in c.path, (
-            f"path contains '>' (TS generic not stripped?): {c.path}"
-        )
+        assert "<" not in c.path, f"path contains '<' (TS generic not stripped?): {c.path}"
+        assert ">" not in c.path, f"path contains '>' (TS generic not stripped?): {c.path}"
 
     # 6. URL 常量传播校验：URL.OTA.CHECK 应被解析为 /api/v1/ota/check
     all_paths = {c.path for c in contract_report.frontend_calls}
-    assert "/api/v1/ota/check" in all_paths, (
-        "URL.OTA.CHECK constant not propagated (expected /api/v1/ota/check)"
-    )
+    assert "/api/v1/ota/check" in all_paths, "URL.OTA.CHECK constant not propagated (expected /api/v1/ota/check)"
 
     # 7. 校验关键 API 模块（authApi/deviceApi/systemApi）的调用存在
     api_names = {c.api_name for c in contract_report.frontend_calls}

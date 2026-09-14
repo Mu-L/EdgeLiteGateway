@@ -52,13 +52,13 @@ def _check_onnxruntime() -> bool:
 
 import contextlib
 
+from edgelite.engine.event_bus import Event
 from edgelite.models.ai_model import (
     AiInferenceLogORM,
     AiModelORM,
     ModelStatus,
     ModelType,
 )
-from edgelite.engine.event_bus import Event
 from edgelite.packet_recorder import record_packet
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def _generate_onnx_model(
         for i in range(out_dim):
             start_idx = in_dim - out_dim - i
             for j in range(min(3, out_dim)):
-                if start_idx + j >= 0 and start_idx + j < in_dim:        
+                if start_idx + j >= 0 and start_idx + j < in_dim:
                     W[start_idx + j, i] = 0.8 - j * 0.2
         b: Any = _np.zeros(out_dim, dtype=_np.float32)
         X = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
@@ -1050,7 +1050,7 @@ class AiInferenceEngine:
                 # reshape 到 [1,100] 导致 "Invalid rank: Got 2 Expected 1" 错误，所有推理失败。
                 onnx_input = wrapper.session.get_inputs()[0]
                 actual_shape: list[int] = []
-                for d in (onnx_input.shape or [1]):
+                for d in onnx_input.shape or [1]:
                     # ONNX 用字符串（符号维度）或 None 表示动态维度
                     if isinstance(d, str) or d is None:
                         actual_shape.append(-1)
@@ -1780,7 +1780,9 @@ class AiInferenceEngine:
         logger.info("Model version rolled back: %s %s -> %s", model_id, current_version, target_version)
         return True
 
-    def _record_version(self, wrapper: OnnxModelWrapper | TFLiteModelWrapper | PMMLModelWrapper, version: str | None = None) -> None:
+    def _record_version(
+        self, wrapper: OnnxModelWrapper | TFLiteModelWrapper | PMMLModelWrapper, version: str | None = None
+    ) -> None:
         if not hasattr(wrapper, "_version_history"):
             wrapper._version_history = []
         entry = {

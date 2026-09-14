@@ -296,7 +296,9 @@ async def delete_user(
                 device_repo = DeviceRepo(session, db.write_lock)
                 rule_repo = RuleRepo(session, db.write_lock)
                 owned_device_ids = await device_repo.list_device_ids_by_owner(user_id)
-                _, rule_total = cast("tuple[list[dict], int]", await rule_repo.list_all(page=1, size=1, created_by=user_id))
+                _, rule_total = cast(
+                    "tuple[list[dict], int]", await rule_repo.list_all(page=1, size=1, created_by=user_id)
+                )
                 if owned_device_ids or rule_total > 0:
                     raise HTTPException(status_code=409, detail=UserErrors.HAS_RESOURCES)
 

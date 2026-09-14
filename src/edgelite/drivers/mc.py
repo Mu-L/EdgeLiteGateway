@@ -1010,7 +1010,9 @@ class McDriver(DriverPlugin):
                         return values[0] if values else None
                 finally:
                     try:
-                        if had_opt and old_opt is not None and hasattr(c, "set_accessopt"):  # FIXED-P1: 用had_opt替代old_opt真值判断  # FIXED-mypy: 添加 old_opt is not None 收窄类型，避免 **None
+                        if (
+                            had_opt and old_opt is not None and hasattr(c, "set_accessopt")
+                        ):  # FIXED-P1: 用had_opt替代old_opt真值判断  # FIXED-mypy: 添加 old_opt is not None 收窄类型，避免 **None
                             c.set_accessopt(**old_opt)
                     except Exception as e:
                         logger.warning("[mc] operation failed: %s", e)  # FIXED-P2: 原问题-异常被静默吞没，添加日志记录
@@ -1534,7 +1536,9 @@ class McDriver(DriverPlugin):
             if new_client:
                 try:
                     await self._call_sync(new_client.close, timeout=5.0)
-                except Exception as close_err:  # FIXED-mypy: 改名为 close_err 避免遮蔽外层 e，否则外层 e 在内层 except 结束后被删除
+                except (
+                    Exception
+                ) as close_err:  # FIXED-mypy: 改名为 close_err 避免遮蔽外层 e，否则外层 e 在内层 except 结束后被删除
                     logger.warning(
                         "[mc] new client close failed during reconnect: %s", close_err
                     )  # FIXED-P2: 原问题-close异常被静默吞没，添加日志记录
@@ -2065,7 +2069,9 @@ class McDriver(DriverPlugin):
             try:
                 from edgelite.engine.event_bus import EventBus
 
-                event_bus = EventBus()  # FIXED-mypy: EventBus 无 instance() 类方法，改为直接实例化（与 fins/allen_bradley 驱动一致）
+                event_bus = (
+                    EventBus()
+                )  # FIXED-mypy: EventBus 无 instance() 类方法，改为直接实例化（与 fins/allen_bradley 驱动一致）
             except Exception:
                 event_bus = None
             self._rule_store = RuleStore()

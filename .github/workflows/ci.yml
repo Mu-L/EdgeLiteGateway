@@ -33,7 +33,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Install ruff
-        run: pip install "ruff>=0.3.0"
+        # FIXED(ci): 钉住版本，避免 ruff 新版本格式风格漂移导致 format check 误报
+        run: pip install "ruff==0.15.11"
       - name: Ruff check
         run: ruff check .
       - name: Ruff format check

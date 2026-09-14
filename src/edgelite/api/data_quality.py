@@ -36,9 +36,7 @@ def _get_data_service() -> Any | None:
         return None
 
 
-async def _query_points(
-    device_id: str, point_name: str, start: str, end: str
-) -> list[dict[str, Any]]:
+async def _query_points(device_id: str, point_name: str, start: str, end: str) -> list[dict[str, Any]]:
     svc = _get_data_service()
     if svc is None:
         return []
@@ -91,7 +89,7 @@ def _compute_quality(points: list[dict[str, Any]]) -> dict[str, Any]:
         avg = sum(values) / valid_count
         # 简单异常检测：值偏离均值 3σ 视为异常
         variance = sum((v - avg) ** 2 for v in values) / valid_count
-        stddev = variance ** 0.5
+        stddev = variance**0.5
         for v in values:
             if stddev > 0 and abs(v - avg) > 3 * stddev:
                 anomaly_count += 1
@@ -183,10 +181,7 @@ async def list_devices(
 ):
     """分页返回有质量统计的设备列表"""
     try:
-        items = [
-            {"device_id": did, "point_count": len(points_map)}
-            for did, points_map in _quality_cache.items()
-        ]
+        items = [{"device_id": did, "point_count": len(points_map)} for did, points_map in _quality_cache.items()]
         total = len(items)
         start_idx = (page - 1) * size
         page_items = items[start_idx : start_idx + size]
@@ -210,9 +205,7 @@ async def get_device(
             data={
                 "device_id": device_id,
                 "point_count": len(points_map),
-                "points": [
-                    {"point_name": pn, "stats": st} for pn, st in points_map.items()
-                ],
+                "points": [{"point_name": pn, "stats": st} for pn, st in points_map.items()],
             }
         )
     except HTTPException:
@@ -263,12 +256,8 @@ async def get_report(
                 a = stats.get("anomaly_rate", 0.0) if isinstance(stats, dict) else 0.0
                 all_completeness.append(float(q))
                 all_anomaly_rate.append(float(a))
-            avg_completeness = (
-                round(sum(all_completeness) / len(all_completeness), 2) if all_completeness else 0.0
-            )
-            avg_anomaly = (
-                round(sum(all_anomaly_rate) / len(all_anomaly_rate), 2) if all_anomaly_rate else 0.0
-            )
+            avg_completeness = round(sum(all_completeness) / len(all_completeness), 2) if all_completeness else 0.0
+            avg_anomaly = round(sum(all_anomaly_rate) / len(all_anomaly_rate), 2) if all_anomaly_rate else 0.0
             report.append(
                 {
                     "device_id": did,

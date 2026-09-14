@@ -618,7 +618,15 @@ async def downsample_timeseries(
             points = []
 
         if not points:
-            return ApiResponse(data={"device_id": body.device_id, "point_name": body.point_name, "interval": body.interval, "agg_fn": agg_fn, "buckets": []})
+            return ApiResponse(
+                data={
+                    "device_id": body.device_id,
+                    "point_name": body.point_name,
+                    "interval": body.interval,
+                    "agg_fn": agg_fn,
+                    "buckets": [],
+                }
+            )
 
         # 按 interval 分桶聚合
         buckets: dict[int, list[float]] = {}
