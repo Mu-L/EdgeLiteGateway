@@ -49,7 +49,17 @@ jobs:
       - name: API contract check (frontend/backend alignment)
         run: python scripts/check_api_contract.py
       - name: Docker Compose config validation
-        run: docker compose -f docker/docker-compose.yml --profile monitoring config --quiet
+        # FIXED(ci): CI 检出环境无 docker/.env（gitignored），compose 的 :? 必填变量会令
+        # config 校验直接失败；此处注入占位值仅供配置语法/结构校验
+        run: >-
+          INFLUXDB_TOKEN=ci-placeholder
+          MQTT_PASSWORD=ci-placeholder
+          SECRET_KEY=ci-placeholder
+          EDGELITE_MASTER_KEY=ci-placeholder
+          ADMIN_PASSWORD=ci-placeholder
+          INFLUXDB_PASSWORD=ci-placeholder
+          GRAFANA_ADMIN_PASSWORD=ci-placeholder
+          docker compose -f docker/docker-compose.yml --profile monitoring config --quiet
 
   typecheck:
     name: Type check (pyright)
