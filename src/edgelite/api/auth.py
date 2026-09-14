@@ -41,14 +41,31 @@ def _is_dev_mode() -> bool:
     return os.environ.get("DEV_MODE", "").lower() in ("true", "1", "yes")
 
 
-def _set_token_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def _is_secure_request(request: Request) -> bool:
+    """FIXED(deploy-ux): 按实际请求协议判定是否加 Secure 属性。
+
+    原问题：secure = not DEV_MODE，导致生产 HTTP 部署（如内网 http://ip:3000）
+    下发的 Secure Cookie 被浏览器直接丢弃，密码正确也无法保持登录态，
+    表现为"输入正确初始密码后仍弹回登录页"。
+    修复：跟随真实请求协议（https → Secure），并兼容 TLS 卸载代理的
+    X-Forwarded-Proto 头。DEV_MODE 不再影响 Cookie 安全属性。
+    """
+    scheme = (request.scope.get("scheme") or "http").lower()
+    if scheme == "https":
+        return True
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    return forwarded_proto == "https"
+
+
+def _set_token_cookies(response: Response, request: Request, access_token: str, refresh_token: str) -> None:
     """LP-02: 设置 HttpOnly Cookie 存储 Token，防止 XSS 窃取。
 
     access_token: path=/ 覆盖 API 和 WS 端点
     refresh_token: path=/api/v1/auth 限制仅 auth 路径可访问
+    FIXED(deploy-ux): secure/samesite 跟随实际请求协议，HTTP 部署不再丢登录态。
     """
-    secure = not _is_dev_mode()
-    samesite: Literal["lax", "strict", "none"] = "lax" if _is_dev_mode() else "strict"
+    secure = _is_secure_request(request)
+    samesite: Literal["lax", "strict", "none"] = "strict" if secure else "lax"
     config = get_config()
     access_max_age = config.security.access_token_expire_minutes * 60
     refresh_max_age = config.security.refresh_token_expire_days * 86400
@@ -435,7 +452,7 @@ async def login(req: LoginRequest, request: Request, db: DatabaseDep, audit_svc:
         response = JSONResponse(content=response_data.model_dump())
         response.headers["X-CSRF-Token"] = csrf_token
         # LP-02: 设置 HttpOnly Cookie 存储 Token
-        _set_token_cookies(response, access_token, refresh_token)
+        _set_token_cookies(response, request, access_token, refresh_token)
         return response
     except HTTPException:
         raise
@@ -578,7 +595,7 @@ async def refresh_token(request: Request, db: DatabaseDep, refresh: str | None =
         response = JSONResponse(content=response_data.model_dump())
         response.headers["X-CSRF-Token"] = new_csrf_token
         # LP-02: 更新 HttpOnly Cookie 中的 Token
-        _set_token_cookies(response, access_token, new_refresh)
+        _set_token_cookies(response, request, access_token, new_refresh)
         return response
     except HTTPException:
         raise

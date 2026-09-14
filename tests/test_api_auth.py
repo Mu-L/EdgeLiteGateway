@@ -50,13 +50,15 @@ from edgelite.api.auth import (
 def _make_request(
     client_host: str = "1.2.3.4",
     headers: dict | None = None,
+    scheme: str = "http",
 ) -> Request:
-    """构造带 client 和 headers 的伪 Request"""
+    """构造带 client、headers 和 scheme 的伪 Request"""
     scope = {
         "type": "http",
         "method": "GET",
         "headers": [],
         "client": (client_host, 12345),
+        "scheme": scheme,
     }
     if headers:
         scope["headers"] = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
@@ -210,36 +212,65 @@ class TestGetClientIp:
 
 
 class TestSetTokenCookies:
-    def test_set_cookies_dev_mode(self, monkeypatch):
-        """开发模式应设置非 secure cookie"""
-        monkeypatch.setenv("DEV_MODE", "true")
-        mock_config = SimpleNamespace(
-            security=SimpleNamespace(
-                access_token_expire_minutes=30,
-                refresh_token_expire_days=7,
-            )
-        )
-        response = JSONResponse(content={})
-        with patch("edgelite.api.auth.get_config", return_value=mock_config):
-            _set_token_cookies(response, "access_tok", "refresh_tok")
-        # 验证 cookie 被设置
-        set_cookie_headers = [h for h in response.headers.getlist("set-cookie")]
-        assert len(set_cookie_headers) == 2
+    """FIXED(deploy-ux): secure/samesite 应跟随实际请求协议而非 DEV_MODE。
 
-    def test_set_cookies_prod_mode(self, monkeypatch):
-        """生产模式应设置 secure cookie"""
-        monkeypatch.delenv("DEV_MODE", raising=False)
-        mock_config = SimpleNamespace(
+    回归背景：生产 HTTP 部署（内网 http://ip:3000）下 Secure Cookie 被浏览器
+    丢弃，密码正确也无法保持登录态。
+    """
+
+    @staticmethod
+    def _make_config():
+        return SimpleNamespace(
             security=SimpleNamespace(
                 access_token_expire_minutes=30,
                 refresh_token_expire_days=7,
             )
         )
+
+    def test_set_cookies_http_request(self, monkeypatch):
+        """HTTP 请求（即使 DEV_MODE 未设置）也应下发非 secure cookie"""
+        monkeypatch.delenv("DEV_MODE", raising=False)
+        req = _make_request("1.2.3.4", scheme="http")
         response = JSONResponse(content={})
-        with patch("edgelite.api.auth.get_config", return_value=mock_config):
-            _set_token_cookies(response, "access_tok", "refresh_tok")
+        with patch("edgelite.api.auth.get_config", return_value=self._make_config()):
+            _set_token_cookies(response, req, "access_tok", "refresh_tok")
         set_cookie_headers = [h for h in response.headers.getlist("set-cookie")]
         assert len(set_cookie_headers) == 2
+        for header in set_cookie_headers:
+            assert "secure" not in header.lower()
+
+    def test_set_cookies_https_request(self, monkeypatch):
+        """HTTPS 请求应设置 secure cookie"""
+        monkeypatch.delenv("DEV_MODE", raising=False)
+        req = _make_request("1.2.3.4", scheme="https")
+        response = JSONResponse(content={})
+        with patch("edgelite.api.auth.get_config", return_value=self._make_config()):
+            _set_token_cookies(response, req, "access_tok", "refresh_tok")
+        set_cookie_headers = [h for h in response.headers.getlist("set-cookie")]
+        assert len(set_cookie_headers) == 2
+        for header in set_cookie_headers:
+            assert "secure" in header.lower()
+
+    def test_set_cookies_forwarded_https(self, monkeypatch):
+        """TLS 卸载代理（X-Forwarded-Proto: https）应设置 secure cookie"""
+        monkeypatch.delenv("DEV_MODE", raising=False)
+        req = _make_request("1.2.3.4", {"X-Forwarded-Proto": "https"}, scheme="http")
+        response = JSONResponse(content={})
+        with patch("edgelite.api.auth.get_config", return_value=self._make_config()):
+            _set_token_cookies(response, req, "access_tok", "refresh_tok")
+        set_cookie_headers = [h for h in response.headers.getlist("set-cookie")]
+        for header in set_cookie_headers:
+            assert "secure" in header.lower()
+
+    def test_set_cookies_dev_mode_no_effect(self, monkeypatch):
+        """DEV_MODE=true 不再改变 Cookie 安全属性（协议才是唯一依据）"""
+        monkeypatch.setenv("DEV_MODE", "true")
+        req_https = _make_request("1.2.3.4", scheme="https")
+        response = JSONResponse(content={})
+        with patch("edgelite.api.auth.get_config", return_value=self._make_config()):
+            _set_token_cookies(response, req_https, "access_tok", "refresh_tok")
+        for header in response.headers.getlist("set-cookie"):
+            assert "secure" in header.lower()
 
 
 class TestClearTokenCookies:

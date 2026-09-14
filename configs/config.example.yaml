@@ -11,7 +11,7 @@
 # ── 服务配置 ──────────────────────────────────────────────
 server:
   host: "127.0.0.1"       # FIXED-P1: 默认仅监听localhost，Docker部署通过环境变量覆盖为0.0.0.0
-  port: 8080                # 监听端口，默认 8080
+  port: 8180                # 监听端口，本地部署默认 8180（与前端开发代理对齐；Docker 部署通过 EDGELITE_SERVER__PORT=8080 覆盖）
   # FIXED: 使用推荐字段 cors_allowed_origins（旧字段 cors_origins 仅向后兼容读取）[2026-06-29]
   cors_allowed_origins:      # CORS 允许源列表，生产环境限制为实际域名
     - "http://localhost:3000"  # Vite 开发服务器默认端口

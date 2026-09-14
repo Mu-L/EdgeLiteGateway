@@ -5,6 +5,11 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
+// FIXED(deploy-ux): 后端代理端口改为可配置，默认 8180 与 configs/config.yaml 对齐。
+// 原写死 8180 而 README 教用户把后端跑在 8080，导致 npm run dev 模式下
+// 登录/API 请求全部代理到无人监听的端口，"页面能打开但登录永远失败"。
+const apiPort = process.env.VITE_API_PORT || '8180'
+
 export default defineConfig({
   plugins: [vue()],
   define: {
@@ -19,12 +24,13 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        // FIXED-P0-1: 端口对齐 .env 中的 EDGELITE_SERVER__PORT=8180
-        target: 'http://localhost:8180',
+        // 默认 8180，与 configs/config.yaml 的 EDGELITE_SERVER__PORT 对齐；
+        // 后端改用其他端口时同步设置 VITE_API_PORT
+        target: `http://localhost:${apiPort}`,
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8180',
+        target: `ws://localhost:${apiPort}`,
         ws: true,
         changeOrigin: true,
       },

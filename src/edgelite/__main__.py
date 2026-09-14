@@ -48,8 +48,8 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.environ.get("EDGELITE_SERVER__PORT", "8080")),
-        help="监听端口",
+        default=int(os.environ.get("EDGELITE_SERVER__PORT", "8180")),
+        help="监听端口（默认 8180，与 configs/config.yaml 及前端开发代理对齐；Docker 部署通过 EDGELITE_SERVER__PORT=8080 覆盖）",
     )
     parser.add_argument("--config", default="configs/config.yaml", help="配置文件路径")
     parser.add_argument("--reload", action="store_true", help="开发模式热重载")

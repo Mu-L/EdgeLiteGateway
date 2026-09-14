@@ -48,9 +48,7 @@ EdgeLite Gateway is an **open-source edge AI gateway** designed for industrial I
 
 > **Only** **[Docker](https://docs.docker.com/get-docker/)** **required. No Node.js / Python needed.**
 
-> **If the environment variable is not set on first startup, the system will randomly generate an admin password and print it to the console log.**
-
-> **Please check the logs after first startup to get the initial password, and change it to a secure password immediately.**
+> **Initial password on first startup**: if `EDGELITE_ADMIN_PASSWORD` is not set, the system generates a random admin password and writes it to the **`data/.initial_admin_password` file** (production mode never prints the plaintext to logs). Read it with `cat data/.initial_admin_password`; **the file is auto-deleted after the first successful login**.
 
 > ⚠️ **Windows users**: Use **PowerShell** (not CMD). Right-click Start → Windows PowerShell.
 
@@ -68,7 +66,7 @@ cd docker && docker compose build edgelite && docker compose up -d
 docker compose logs -f edgelite        # "Uvicorn running" = success, Ctrl+C to exit
 ```
 
-> **After first startup, check the console log for the initial admin password.**
+> **After first startup, read `data/.initial_admin_password` for the initial admin password (run on the host project directory for Docker deployments; if `ADMIN_PASSWORD` is set, it takes precedence and no file is created).**
 
 > **Password change is required on first login.**
 
@@ -434,10 +432,13 @@ python -m venv .venv
 source .venv/bin/activate     # Linux / Mac
 pip install -e ".[dev]"
 cp configs/config.example.yaml configs/config.yaml
-python main.py --port 8080    # New terminal: start backend
-cd web && cp .env.example .env && npm install && npm run dev  # New terminal: start frontend
-# Open http://localhost:5173
+python main.py --host 0.0.0.0 --port 8180   # Terminal 1: backend (default port 8180, aligned with the frontend dev proxy)
+cd web && cp .env.example .env && npm install && npm run dev  # Terminal 2: frontend dev server
+# Open http://localhost:3000 (Vite dev server, NOT 8180)
+# First login password: cat data/.initial_admin_password (auto-deleted after first successful login)
 ```
+
+> 💡 **Port convention**: backend defaults to **8180** locally; the Vite dev server runs on **3000** and proxies `/api` to 8180 automatically. If you change the backend port, set `VITE_API_PORT` before starting the frontend (e.g. `VITE_API_PORT=9000 npm run dev`).
 
 <details>
 <summary>📦 Optional: Install InfluxDB and Mosquitto</summary>

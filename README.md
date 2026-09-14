@@ -48,9 +48,7 @@ EdgeLite Gateway 是一个面向工业物联网场景的**开源边缘AI网关**
 
 > **只需安装 [Docker](https://docs.docker.com/get-docker/)，无需 Node.js / Python**
 
-> **首次启动时若未设置环境变量，系统将随机生成管理员密码并打印到控制台日志中。**
-
-> **请在首次启动后查看日志获取初始密码，并立即修改为安全密码。**
+> **首次启动密码说明**：若未通过环境变量 `EDGELITE_ADMIN_PASSWORD` 设置密码，系统将随机生成管理员密码并写入 **`data/.initial_admin_password` 文件**（生产模式不会打印明文到日志，防止日志采集泄露）。用 `cat data/.initial_admin_password` 查看；**首次登录成功后该文件会自动删除**。
 
 > ⚠️ **安全警告**：首次部署**必须**设置 JWT Secret Key，否则服务无法启动。编辑 `.env` 文件，将 `EDGELITE_SECURITY__SECRET_KEY` 替换为安全随机密钥：
 > ```bash
@@ -75,7 +73,7 @@ cd docker && docker compose build edgelite && docker compose up -d
 docker compose logs -f edgelite        # 看到 "Uvicorn running" 即成功，Ctrl+C 退出
 ```
 
-> **首次启动后，请查看控制台日志获取初始管理员密码。**
+> **首次启动后，用 `cat data/.initial_admin_password` 获取初始管理员密码（Docker 部署在宿主机项目目录执行；设置了 `ADMIN_PASSWORD` 则以它为准，无此文件）。**
 
 > **首次登录后需强制修改密码。**
 
@@ -133,8 +131,9 @@ cd docker && docker compose --profile nginx up -d
 | `INFLUXDB_TOKEN is not set` | 没复制 `.env` 文件 | 执行 `cp docker/.env.example docker/.env` |
 | `port 8080 is already in use` | 端口被占用 | 关闭占用端口的程序，或修改 docker-compose.yml 端口 |
 | 页面打开白屏/一直在加载 | 前端没构建或其他原因 | 见下方逐步诊断 |
-| 打开 8080 只有 API 文档页面（Swagger） | 前端未构建（Python 本地部署模式） | 需另开终端启动前端：`cd web && npm install && npm run dev`，然后访问 `http://localhost:5173`；或用 Docker 部署（自动构建前端） |
-| 登录时提示"用户名或密码错误" | 忘了密码 | 首次启动查看日志获取随机生成的密码，或检查 `docker/.env` 中 `ADMIN_PASSWORD` 设置；如需重置请设置 `ADMIN_RESET_PASSWORD=true` |
+| 打开 8080 只有 API 文档页面（Swagger） | 前端未构建（Python 本地部署模式） | 需另开终端启动前端：`cd web && npm install && npm run dev`，然后访问 `http://localhost:3000`；或用 Docker 部署（自动构建前端） |
+| 前端页面能打开，但登录报网络错误/永远失败 | Python 部署模式下后端端口与前端代理端口不一致（前端代理默认指向 `8180`） | 后端用 `python main.py --port 8180` 启动；若后端改用其他端口，需在启动前端时同步设置 `VITE_API_PORT` |
+| 登录时提示"用户名或密码错误" | 忘了密码 | 首次启动查看 `data/.initial_admin_password` 文件获取随机生成的密码，或检查 `docker/.env` 中 `ADMIN_PASSWORD` 设置；如需重置请设置 `ADMIN_RESET_PASSWORD=true` |
 
 <details>
 <summary>🔍 页面打不开怎么办？（逐步诊断）</summary>
@@ -430,23 +429,28 @@ cd docker && docker compose --profile nginx up -d
 
 ### 方式二：Python 本地部署（开发模式）
 
-> ⚠️ **重要**：此方式需要**两个终端**分别运行后端和前端。如果只启动后端，浏览器打开 `http://localhost:8080` 会看到 API 文档页面（Swagger），而非完整的管理界面。
+> ⚠️ **重要**：此方式需要**两个终端**分别运行后端和前端。如果只启动后端，浏览器打开 `http://localhost:8180` 会看到 API 文档页面（Swagger），而非完整的管理界面。
 
 ```bash
-# 终端 1：启动后端
+# 终端 1：启动后端（默认端口 8180，与前端开发代理自动对齐，无需额外配置）
 git clone https://gitee.com/suoten/EdgeLiteGateway.git && cd EdgeLiteGateway
 python -m venv .venv
 .venv\Scripts\activate        # Windows PowerShell
 source .venv/bin/activate     # Linux / Mac
 pip install -e ".[dev]"
 cp configs/config.example.yaml configs/config.yaml
-python main.py --port 8080
+python main.py --host 0.0.0.0 --port 8180
 
 # 终端 2：启动前端开发服务器（必须另开一个终端）
 cd web && cp .env.example .env && npm install && npm run dev
 
-# ✅ 浏览器打开 http://localhost:5173（前端开发服务器地址，不是 8080）
+# ✅ 浏览器打开 http://localhost:3000（前端开发服务器地址，不是 8180）
+# ✅ 首次登录密码：cat data/.initial_admin_password（登录成功后自动删除）
 ```
+
+> 💡 **端口约定**：本地部署后端默认 **8180**，前端开发服务器（Vite）默认 **3000** 且已自动代理 `/api` 到 8180。若后端改用其他端口，启动前端前需设置 `VITE_API_PORT`（如 `VITE_API_PORT=9000 npm run dev`）。
+>
+> 💡 **后台运行（Linux）**：生产环境可用 `screen -S edgelite` 后执行 `python3 -m edgelite --host 0.0.0.0 --port 8180`，`Ctrl+A D` 脱离会话，`screen -r edgelite` 恢复；或用 systemd 托管。
 
 <details>
 <summary>📦 可选：安装 InfluxDB 和 Mosquitto</summary>

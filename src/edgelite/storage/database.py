@@ -1073,6 +1073,51 @@ class Database:
                         self._clear_password_reset_flag()
                 except Exception as e:
                     logger.error("Database.init_tables admin password reset failed: %s", e)
+            elif admin_user is not None:
+                # FIXED(deploy-ux): 初始密码文件与 DB 口令不一致时自动同步，保证
+                # "文件存在 ⇒ 文件里的密码能登录"。终端用户按 .initial_admin_password
+                # 输入密码却 401，是部署体验最差的故障模式（文件过期、密码被其他
+                # 途径修改/迁移后不同步）。登录成功后文件会被自动删除，因此文件残留
+                # 基本意味着从未成功登录，此时以文件值为准是安全的。
+                await self._sync_initial_password_file(session, admin_user)
+
+    async def _sync_initial_password_file(self, session: Any, admin_user: Any) -> None:
+        """FIXED(deploy-ux): 校验 .initial_admin_password 与 DB 口令，不一致则同步为文件值。
+
+        原问题：初始密码文件只在首次创建 admin 时写入一次，此后若数据目录被重建、
+        迁移或密码被其他途径修改，文件内容就会过期，用户按文件输入密码必然 401。
+        修复：启动时若文件存在且其口令与 DB 哈希不匹配，重置 admin 密码为文件值
+        （并要求首次登录改密），使文件始终是有效的初始凭证载体。
+        """
+        password_file = os.path.join(
+            os.path.dirname(self.db_path) if self.db_path else "data", ".initial_admin_password"
+        )
+        if not os.path.exists(password_file):
+            return
+        try:
+            with open(password_file, encoding="utf-8") as f:
+                file_password = f.read().strip()
+            if not file_password:
+                logger.warning("Initial admin password file %s is empty, skip sync", password_file)
+                return
+
+            from edgelite.security.password import hash_password, verify_password
+
+            if verify_password(file_password, admin_user.password):
+                return  # 文件与 DB 一致，无需处理
+
+            admin_user.password = hash_password(file_password)
+            admin_user.must_change_password = True
+            await session.commit()
+            logger.warning(
+                "Initial admin password file %s was out of sync with the database. "
+                "Admin password has been reset to the file value to keep the initial "
+                "credential usable. The file will be auto-deleted after first login.",
+                password_file,
+            )
+        except Exception as e:
+            # 同步失败不阻断启动，保持旧行为（登录时密码校验为准）
+            logger.warning("Initial admin password file sync check failed: %s", e)
 
     async def _check_password_already_reset(self, admin_user: Any, temp_password: str) -> bool:
         """FIXED: 检查admin密码是否已经是 EDGELITE_ADMIN_PASSWORD 指定的值。
