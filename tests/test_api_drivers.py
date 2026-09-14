@@ -18,7 +18,6 @@ from edgelite.api.drivers import (
     DriverDiscoverRequest,
     DriverInfo,
     OpcUaBrowseRequest,
-    ReloadModelRequest,
     _driver_supports_method,
     router,
 )
@@ -124,10 +123,8 @@ class TestDriverModels:
         req = OpcUaBrowseRequest(device_id="d1")
         assert req.node_id is None
         assert req.max_depth == 1
-
-    def test_reload_model_request_validation(self):
-        with pytest.raises(Exception):
-            ReloadModelRequest(model_path="")
+        # FIXED(ci): 原 test_reload_model_request_validation 随
+        # ReloadModelRequest 模型及 video-ai reload-model 端点裁剪移除（commit c69429e）。
 
 
 class TestDriverSupportsMethod:
@@ -775,8 +772,17 @@ class TestOpcUaBrowse:
 
 class TestOpcUaCertificateStatus:
     def test_cert_status_success(self):
-        with patch("edgelite.drivers.opcua.OpcUaDriver") as MockDriver:
-            MockDriver.get_certificate_status.return_value = {"d1": {"valid": True}}
+        # FIXED(ci): 实现为 OpcUaDriver.__new__(OpcUaDriver) 裸实例 + 实例方法
+        # get_certificate_status()（只读 _certificate_status）。MagicMock 不支持
+        # __new__ 子 mock，改用真实替身类验证端点与实现的协作。
+        captured: dict = {}
+
+        class _FakeOpcUaDriver:
+            def get_certificate_status(self):
+                captured["status"] = self._certificate_status
+                return {"d1": {"valid": True}}
+
+        with patch("edgelite.drivers.opcua.OpcUaDriver", _FakeOpcUaDriver):
             app = _build_app()
             client = TestClient(app)
             resp = client.get("/api/v1/drivers/opcua/certificate-status")
@@ -784,10 +790,14 @@ class TestOpcUaCertificateStatus:
         data = resp.json()["data"]
         assert data["device_count"] == 1
         assert "certificates" in data
+        assert captured["status"] == {}
 
     def test_cert_status_exception_500(self):
-        with patch("edgelite.drivers.opcua.OpcUaDriver") as MockDriver:
-            MockDriver.get_certificate_status.side_effect = RuntimeError("boom")
+        class _BoomOpcUaDriver:
+            def get_certificate_status(self):
+                raise RuntimeError("boom")
+
+        with patch("edgelite.drivers.opcua.OpcUaDriver", _BoomOpcUaDriver):
             app = _build_app()
             client = TestClient(app)
             resp = client.get("/api/v1/drivers/opcua/certificate-status")
@@ -923,172 +933,3 @@ class TestDriversHealth:
         data = resp.json()["data"]
         assert data[0]["degraded_count"] == 1
         assert data[0]["healthy_count"] == 0
-
-
-class TestVideoAiStatus:
-    def test_status_no_plugin_manager(self):
-        app = _build_app()
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/status")
-        assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data["running"] is False
-
-    def test_status_driver_not_found(self):
-        pm = _make_plugin_manager(get_driver_map={})
-        app = _build_app(plugin_manager=pm)
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/status")
-        assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data["running"] is False
-
-    def test_status_success(self):
-        driver = MagicMock()
-        driver.get_status.return_value = {"running": True, "model": "v1"}
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        app = _build_app(plugin_manager=pm)
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/status")
-        assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data["running"] is True
-
-    def test_status_exception_500(self):
-        pm = MagicMock()
-        pm.get_driver.side_effect = RuntimeError("boom")
-        app = _build_app(plugin_manager=pm)
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/status")
-        assert resp.status_code == 500
-
-
-class TestVideoAiAudit:
-    def test_audit_no_plugin_manager(self):
-        app = _build_app()
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/audit")
-        assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data == {"entries": [], "total": 0}
-
-    def test_audit_driver_not_found(self):
-        pm = _make_plugin_manager(get_driver_map={})
-        app = _build_app(plugin_manager=pm)
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/audit")
-        assert resp.status_code == 200
-        assert resp.json()["data"]["total"] == 0
-
-    def test_audit_success(self):
-        driver = MagicMock()
-        driver.get_audit_log.return_value = [{"action": "reload"}]
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        app = _build_app(plugin_manager=pm)
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/audit", params={"limit": 10})
-        assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data["total"] == 1
-
-    def test_audit_exception_500(self):
-        pm = MagicMock()
-        pm.get_driver.side_effect = RuntimeError("boom")
-        app = _build_app(plugin_manager=pm)
-        client = TestClient(app)
-        resp = client.get("/api/v1/drivers/video-ai/audit")
-        assert resp.status_code == 500
-
-
-class TestVideoAiReloadModel:
-    def test_reload_no_plugin_manager_503(self):
-        app = _build_app()
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": "elg-anomaly-v1.onnx"},
-        )
-        assert resp.status_code == 503
-
-    def test_reload_driver_not_found_404(self):
-        pm = _make_plugin_manager(get_driver_map={})
-        audit = _make_audit_service()
-        app = _build_app(plugin_manager=pm, audit_service=audit, role="admin")
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": "elg-anomaly-v1.onnx"},
-        )
-        assert resp.status_code == 404
-
-    def test_reload_path_traversal_403(self):
-        driver = MagicMock()
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        audit = _make_audit_service()
-        app = _build_app(plugin_manager=pm, audit_service=audit, role="admin")
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": "../etc/passwd"},
-        )
-        assert resp.status_code == 403
-
-    def test_reload_empty_path_422(self):
-        driver = MagicMock()
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        audit = _make_audit_service()
-        app = _build_app(plugin_manager=pm, audit_service=audit, role="admin")
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": ""},
-        )
-        assert resp.status_code in (400, 422)
-
-    def test_reload_path_not_allowed_403(self):
-        driver = MagicMock()
-        driver.reload_model = AsyncMock(return_value={"ok": True})
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        audit = _make_audit_service()
-        app = _build_app(plugin_manager=pm, audit_service=audit, role="admin")
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": "/etc/passwd"},
-        )
-        assert resp.status_code == 403
-
-    def test_reload_success(self):
-        driver = MagicMock()
-        driver.reload_model = AsyncMock(return_value={"ok": True, "model": "loaded"})
-        driver._allowed_model_dirs = []
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        audit = _make_audit_service()
-        app = _build_app(plugin_manager=pm, audit_service=audit, role="admin")
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": "elg-anomaly-v1.onnx"},
-        )
-        if resp.status_code == 200:
-            data = resp.json()["data"]
-            assert data["ok"] is True
-        else:
-            assert resp.status_code in (403, 500)
-
-    def test_reload_internal_error_500(self):
-        driver = MagicMock()
-        driver.reload_model = AsyncMock(side_effect=RuntimeError("reload fail"))
-        driver._allowed_model_dirs = []
-        pm = _make_plugin_manager(get_driver_map={"video_ai": driver})
-        audit = _make_audit_service()
-        app = _build_app(plugin_manager=pm, audit_service=audit, role="admin")
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/drivers/video-ai/reload-model",
-            json={"model_path": "elg-anomaly-v1.onnx"},
-        )
-        if resp.status_code == 500:
-            assert resp.status_code == 500
-        else:
-            assert resp.status_code in (403,)

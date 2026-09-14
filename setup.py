@@ -1,46 +1,9 @@
-from setuptools import Extension, setup
-from setuptools.command.build_ext import build_ext
+from setuptools import setup
 
-try:
-    from Cython.Build import cythonize
-
-    HAS_CYTHON = True
-except ImportError:
-    HAS_CYTHON = False
-
-
-def get_extensions():
-    if not HAS_CYTHON:
-        return []
-    return cythonize(
-        [
-            Extension("edgelite._cython.rule_compare", ["src/edgelite/_cython/rule_compare.pyx"]),
-            Extension("edgelite._cython.modbus_mapper", ["src/edgelite/_cython/modbus_mapper.pyx"]),
-        ],
-        compiler_directives={
-            "language_level": "3",
-            "boundscheck": False,
-            "wraparound": False,
-            "cdivision": True,
-        },
-    )
-
-
-class BuildExtWithFallback(build_ext):
-    def build_extensions(self):
-        try:
-            super().build_extensions()
-        except Exception as e:
-            import warnings
-
-            warnings.warn(
-                f"Cython编译失败，将使用纯Python回退实现: {e}\n提示: 安装C编译器(如gcc/MSVC)或Cython可启用加速",
-                stacklevel=2,
-            )
-            self.extensions = []
-
-
-setup(
-    ext_modules=get_extensions(),
-    cmdclass={"build_ext": BuildExtWithFallback},
-)
+# 说明：早期版本曾通过 Cython 编译 src/edgelite/_cython/*.pyx 加速模块
+# （rule_compare / modbus_mapper）。该目录与 .pyx 源码已从仓库移除，
+# 纯 Python 实现为唯一实现，故不再声明 ext_modules。
+# FIXED(ci): 旧声明导致 build 隔离环境中 cythonize() 抛出
+# "'src/edgelite/_cython/rule_compare.pyx' doesn't match any files"，
+# 使 python -m build 在 sdist/wheel 阶段直接失败。
+setup()

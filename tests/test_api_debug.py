@@ -17,11 +17,8 @@ from pydantic import ValidationError
 from edgelite.api.debug import (
     SimulateParams,
     _check_debug_ip_whitelist,
-    _get_buffer,
     _get_real_client_ip,
     _normalize_field_type,
-    _packet_buffers,
-    _simulate_abb_rws,
     _simulate_allen_bradley,
     _simulate_fins,
     _simulate_generic,
@@ -39,6 +36,11 @@ from edgelite.api.debug import (
     router,
 )
 from edgelite.api.error_codes import DebugErrors
+
+# FIXED(ci): 报文缓冲区实现已迁移至 edgelite.packet_recorder，
+# 此处按新位置导入以保持既有缓冲区测试覆盖。
+from edgelite.packet_recorder import get_buffer as _get_buffer  # noqa: E402
+from edgelite.packet_recorder import _packet_buffers  # noqa: E402
 
 # ── Fixtures ──
 
@@ -308,7 +310,7 @@ class TestPacketBuffer:
         assert _get_buffer("p")[0]["seq"] < _get_buffer("p")[1]["seq"]
 
     def test_bounded(self):
-        from edgelite.api.debug import _MAX_PACKET_BUFFER
+        from edgelite.packet_recorder import MAX_PACKET_BUFFER as _MAX_PACKET_BUFFER
 
         for i in range(_MAX_PACKET_BUFFER + 50):
             record_packet("tx", "bd", "d", f"m{i}")
@@ -906,23 +908,6 @@ class TestSimulatePureProtocols:
     )
     async def test_allen_bradley(self, op, params, check):
         assert check(await _simulate_allen_bradley(None, {}, op, params))
-
-    @pytest.mark.parametrize(
-        "op,check",
-        [
-            ("read_joints", lambda r: "axis_1" in r["data"]),
-            ("read_motion", lambda r: "motion" in r["message"]),
-            ("read_status", lambda r: r["data"]["motor_on"] is True),
-            ("read_rapid", lambda r: "Read RAPID" in r["message"]),
-            ("write_rapid", lambda r: "Write RAPID" in r["message"]),
-            ("start_program", lambda r: "start_program" in r["message"]),
-            ("stop_program", lambda r: "stop_program" in r["message"]),
-            ("reset_program", lambda r: "reset_program" in r["message"]),
-            ("other", lambda r: "other executed" in r["message"]),
-        ],
-    )
-    async def test_abb_rws(self, op, check):
-        assert check(await _simulate_abb_rws(None, {}, op, {"rapid_path": "T:x", "write_value": 5}))
 
 
 # ── _simulate_onvif / http_webhook / serial / simulator / opc_da ──

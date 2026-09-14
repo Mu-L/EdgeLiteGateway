@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import importlib.util
 import sqlite3
 import ssl
 import sys
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -24,12 +26,21 @@ import pytest
 
 sys.path.insert(0, "src")
 
-from conftest import make_app
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from edgelite.api.mqtt_forwarder import router
 from edgelite.engine.mqtt_forwarder import MqttForwarder, _sanitize_topic_segment
+
+# FIXED(ci): 原写法 `from conftest import make_app` 在 CI 中会解析到 e2e/conftest.py
+# （tests/ 与 e2e/ 均无 __init__.py，conftest 顶层模块名冲突，sys.modules 缓存先到先得）。
+# 改为按文件路径显式加载同级 tests/conftest.py，避免依赖模块名解析顺序。
+_spec = importlib.util.spec_from_file_location(
+    "_edgelite_tests_conftest", Path(__file__).resolve().parent / "conftest.py"
+)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+make_app = _mod.make_app
 
 
 async def _wait_for(condition, timeout: float = 1.5, interval: float = 0.01) -> bool:
