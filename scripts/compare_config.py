@@ -21,8 +21,17 @@ def flatten_keys(d, prefix=""):
 
 def main():
     root = Path(__file__).parent.parent
-    config = yaml.safe_load((root / "configs/config.yaml").read_text(encoding="utf-8"))
-    example = yaml.safe_load((root / "configs/config.example.yaml").read_text(encoding="utf-8"))
+    config_path = root / "configs/config.yaml"
+    example_path = root / "configs/config.example.yaml"
+
+    # FIXED(ci): config.yaml 是本地运行时配置（.gitignore 忽略），CI 全新检出不存在，
+    # 直接比对会 FileNotFoundError。无本地配置时跳过漂移检查。
+    if not config_path.exists():
+        print(f"[SKIP] {config_path} not found (untracked runtime config); drift check skipped")
+        return 0
+
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    example = yaml.safe_load(example_path.read_text(encoding="utf-8"))
 
     config_keys = flatten_keys(config)
     example_keys = flatten_keys(example)
