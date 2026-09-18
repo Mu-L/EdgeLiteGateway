@@ -747,7 +747,12 @@ def create_app() -> FastAPI:
 
     app.add_middleware(TokenRenewalMiddleware)
     app.add_middleware(CSRFMiddleware)
-    app.add_middleware(RateLimitMiddleware)
+    # FIXED: 将 security.rate_limit_requests_per_minute 配置接入限流中间件，
+    # 此前未传参导致中间件始终使用硬编码默认 120/min，config.yaml 中的限流配置无效
+    app.add_middleware(
+        RateLimitMiddleware,
+        limit_per_minute=int(getattr(getattr(config, "security", None), "rate_limit_requests_per_minute", 120)),
+    )
     # FIXED(G-02): 注册 RequestIdMiddleware，为每个请求生成/继承 request_id 并注入 contextvars，
     # 配合 RequestIdFilter 实现请求级日志串联；最后添加=最先执行，确保下游中间件/路由日志均带 request_id
     app.add_middleware(RequestIdMiddleware)

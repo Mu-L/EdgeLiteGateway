@@ -865,9 +865,9 @@ const allColumns = computed(() => [
       if (r.rule_id && auth.isOperator) {
         options.push({ label: t('alarmList.disableRule'), key: 'disable-rule' })
       }
-      return h(NDropdown, { options, onSelect: (key: string) => handleAlarmAction(key, r) }, {
-        trigger: () => h(NButton, { quaternary: true, size: 'small', ariaLabel: t('common.actions') }, { icon: () => h(NIcon, { component: EllipsisVerticalOutline }) })
-      })
+        return h(NDropdown, { options, onSelect: (key: string) => handleAlarmAction(key, r) }, {
+          default: () => h(NButton, { quaternary: true, size: 'small', ariaLabel: t('common.actions') }, { icon: () => h(NIcon, { component: EllipsisVerticalOutline }) })
+        })
     },
   },
 ])

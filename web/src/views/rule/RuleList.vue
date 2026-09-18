@@ -443,7 +443,7 @@ const columns = computed(() => [
             ],
             onSelect: (key: string) => handleRuleAction(key, r),
           }, {
-            trigger: () => h(NButton, { text: true }, { default: () => '...' }),
+            default: () => h(NButton, { text: true }, { default: () => '...' }),
           }),
         ],
       }),
