@@ -34,18 +34,23 @@ def smoke_test(base_url: str, username: str, password: str) -> bool:
         results.append(("health/live", False, str(e)))
 
     # ── 2. Readiness 健康检查 ─────────────────────────────────────────
+    # FIXED-CI: 原请求 /health（完整检查）— 该端点设计上 degraded 也返 503，
+    # 无 InfluxDB/MQTT broker 的最小部署永远失败；探针语义对应 /health/ready
+    # （仅检查 SQLite+InfluxDB+磁盘，降级视为可就绪）[2026-09-19]
     try:
-        r = client.get("/health")
+        r = client.get("/health/ready")
         ok = r.status_code == 200
         results.append(("health/ready", ok, f"HTTP {r.status_code}"))
     except Exception as e:
         results.append(("health/ready", False, str(e)))
 
     # ── 3. 登录获取 Token ─────────────────────────────────────────────
+    # FIXED-CI: 路径对齐现网 /api/v1/auth/login（旧 /api/* 已不存在，旧行为
+    # 误报 403 CSRF — 实为命中未豁免的旧路径）[2026-09-19]
     token = None
     try:
         r = client.post(
-            "/api/auth/login",
+            "/api/v1/auth/login",
             json={"username": username, "password": password},
         )
         if r.status_code == 200:
@@ -62,29 +67,30 @@ def smoke_test(base_url: str, username: str, password: str) -> bool:
     if token:
         headers = {"Authorization": f"Bearer {token}"}
         try:
-            r = client.get("/api/devices", headers=headers)
+            r = client.get("/api/v1/devices", headers=headers)
             ok = r.status_code == 200
-            results.append(("GET /api/devices", ok, f"HTTP {r.status_code}"))
+            results.append(("GET /api/v1/devices", ok, f"HTTP {r.status_code}"))
         except Exception as e:
-            results.append(("GET /api/devices", False, str(e)))
+            results.append(("GET /api/v1/devices", False, str(e)))
 
         # ── 5. 系统信息 ───────────────────────────────────────────────
         try:
-            r = client.get("/api/system/info", headers=headers)
+            r = client.get("/api/v1/system/info", headers=headers)
             ok = r.status_code == 200
-            results.append(("GET /api/system/info", ok, f"HTTP {r.status_code}"))
+            results.append(("GET /api/v1/system/info", ok, f"HTTP {r.status_code}"))
         except Exception as e:
-            results.append(("GET /api/system/info", False, str(e)))
+            results.append(("GET /api/v1/system/info", False, str(e)))
 
         # ── 6. 指标端点 (Prometheus) ──────────────────────────────────
+        # FIXED-CI: 现网路径为 /api/v1/metrics 且需认证 [2026-09-19]
         try:
-            r = client.get("/metrics")
+            r = client.get("/api/v1/metrics", headers=headers)
             ok = r.status_code == 200 and "# HELP" in r.text
-            results.append(("GET /metrics", ok, f"HTTP {r.status_code} len={len(r.text)}"))
+            results.append(("GET /api/v1/metrics", ok, f"HTTP {r.status_code} len={len(r.text)}"))
         except Exception as e:
-            results.append(("GET /metrics", False, str(e)))
+            results.append(("GET /api/v1/metrics", False, str(e)))
     else:
-        for endpoint in ["GET /api/devices", "GET /api/system/info", "GET /metrics"]:
+        for endpoint in ["GET /api/v1/devices", "GET /api/v1/system/info", "GET /api/v1/metrics"]:
             results.append((endpoint, False, "skipped: no auth token"))
 
     client.close()
