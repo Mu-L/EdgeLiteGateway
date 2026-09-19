@@ -1195,7 +1195,8 @@ class DriverPlugin(ABC):
 
         required_fields = self.config_schema.get("required", [])
         for field_name in required_fields:
-            if field_name not in config:
+            # FIXED-P0: None 值视为缺失（协议契约: 截断配置不应静默通过校验）
+            if field_name not in config or config[field_name] is None:
                 errors.append(f"Missing required field: {field_name}")
 
         ip_keys = ["host", "ip", "address", "server"]

@@ -301,46 +301,8 @@ def mock_config(monkeypatch):
     return config
 
 
-# ── 共享测试辅助函数（供 test_api_system 等通过 `from conftest import` 使用）──
-
-
-def make_mock_audit_service():
-    """返回带 log 方法的 mock 审计服务，供需要 audit_service 的端点测试使用。"""
-    from unittest.mock import AsyncMock
-
-    svc = AsyncMock()
-    svc.log = AsyncMock(return_value=None)
-    return svc
-
-
-def make_app(router=None, role: str = "admin", services: dict | None = None):
-    """构建测试用 FastAPI 应用：覆盖认证依赖 + 注入 mock 服务。
-
-    Args:
-        router: 要挂载的 APIRouter（None 时挂载空应用，仅用于依赖测试）
-        role: 覆盖认证用户的角色（admin/operator/viewer）
-        services: 注入 app.state 的服务字典
-    """
-    import os
-
-    from fastapi import FastAPI
-
-    from edgelite.api.deps import get_current_user
-
-    os.environ.setdefault("EDGELITE_SECURITY__SECRET_KEY", "test-secret-key-for-testing-only-32chars!")
-    os.environ.setdefault("DEV_MODE", "true")
-
-    app = FastAPI(title="EdgeLite Test")
-    if router is not None:
-        app.include_router(router)
-
-    # 覆盖认证依赖：require_permission 内部依赖 get_current_user
-    user = {"user_id": "test-admin", "username": "testadmin", "role": role}
-    app.dependency_overrides[get_current_user] = lambda: user
-
-    # 注入服务到 app.state
-    if services:
-        for key, value in services.items():
-            setattr(app.state, key, value)
-
-    return app
+# ── 共享测试辅助函数 ──
+# FIXED(ci): make_app / make_mock_audit_service 已抽离到 test_helpers.py（模块名唯一，
+# 避免 tests/e2e 两个 conftest.py 在 CI 中的同名冲突）。
+# 此处 re-export 仅为向后兼容，新代码请直接 `from test_helpers import ...`。
+from test_helpers import make_app, make_mock_audit_service  # noqa: E402, F401

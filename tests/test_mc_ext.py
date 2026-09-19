@@ -103,8 +103,10 @@ class TestParseAddress:
         assert d._parse_address("C5")[1] == "word"
 
     def test_empty_address(self):
+        """协议契约: 空地址应拒绝（FIXED-P0 后空地址抛 ValueError）。"""
         d = _make_driver()
-        assert d._parse_address("") == ("", "word")
+        with pytest.raises(ValueError):
+            d._parse_address("")
 
 
 # --- _read_point (sync) ---
@@ -113,52 +115,52 @@ class TestParseAddress:
 class TestReadPoint:
     def test_read_bit(self):
         d = _make_driver()
-        d._client.read_bit_device.return_value = [1]
+        d._client.batchread_bitunits.return_value = [1]
         assert d._read_point("M0") == 1
 
     def test_read_bit_empty_raises(self):
         d = _make_driver()
-        d._client.read_bit_device.return_value = []
+        d._client.batchread_bitunits.return_value = []
         with pytest.raises(ValueError, match="Empty response"):
             d._read_point("M0")
 
     def test_read_word(self):
         d = _make_driver()
-        d._client.read_device.return_value = [100]
+        d._client.batchread_wordunits.return_value = [100]
         assert d._read_point("D100") == 100
 
     def test_read_word_empty_raises(self):
         d = _make_driver()
-        d._client.read_device.return_value = []
+        d._client.batchread_wordunits.return_value = []
         with pytest.raises(ValueError):
             d._read_point("D100")
 
     def test_read_uword_masks(self):
         d = _make_driver()
-        d._client.read_device.return_value = [-1]
+        d._client.batchread_wordunits.return_value = [-1]
         assert d._read_point("D100.U") == 65535
 
     def test_read_long_big_endian(self):
         d = _make_driver()
         d._byte_order = "big"
-        d._client.read_device.return_value = [0x1234, 0x5678]
+        d._client.batchread_wordunits.return_value = [0x1234, 0x5678]
         assert d._read_point("D100.L") == 0x12345678
 
     def test_read_long_little_endian(self):
         d = _make_driver()
         d._byte_order = "little"
-        d._client.read_device.return_value = [0x5678, 0x1234]
+        d._client.batchread_wordunits.return_value = [0x5678, 0x1234]
         assert d._read_point("D100.L") == 0x12345678
 
     def test_read_long_insufficient_raises(self):
         d = _make_driver()
-        d._client.read_device.return_value = [1]
+        d._client.batchread_wordunits.return_value = [1]
         with pytest.raises(ValueError, match="Insufficient data"):
             d._read_point("D100.L")
 
     def test_read_long_non_int_raises(self):
         d = _make_driver()
-        d._client.read_device.return_value = [1, None]
+        d._client.batchread_wordunits.return_value = [1, None]
         with pytest.raises(ValueError, match="Non-integer"):
             d._read_point("D100.L")
 
@@ -167,7 +169,7 @@ class TestReadPoint:
         d._byte_order = "big"
         raw = struct.pack(">f", 3.14)
         hi, lo = struct.unpack(">HH", raw)
-        d._client.read_device.return_value = [hi, lo]
+        d._client.batchread_wordunits.return_value = [hi, lo]
         assert abs(d._read_point("D100.F") - 3.14) < 0.01
 
     def test_read_float_little_endian(self):
@@ -175,7 +177,7 @@ class TestReadPoint:
         d._byte_order = "little"
         raw = struct.pack("<f", 2.5)
         lo, hi = struct.unpack("<HH", raw)
-        d._client.read_device.return_value = [lo, hi]
+        d._client.batchread_wordunits.return_value = [lo, hi]
         assert abs(d._read_point("D100.F") - 2.5) < 0.01
 
     def test_read_client_none_raises(self):
@@ -191,45 +193,45 @@ class TestWritePointSync:
     def test_write_bit(self):
         d = _make_driver()
         d._write_point("M0", True)
-        d._client.write_bit_device.assert_called_once_with("M0", [1])
+        d._client.batchwrite_bitunits.assert_called_once_with("M0", [1])
 
     def test_write_bit_false(self):
         d = _make_driver()
         d._write_point("M0", 0)
-        d._client.write_bit_device.assert_called_once_with("M0", [0])
+        d._client.batchwrite_bitunits.assert_called_once_with("M0", [0])
 
     def test_write_word(self):
         d = _make_driver()
         d._write_point("D100", 42)
-        d._client.write_device.assert_called_once_with("D100", [42])
+        d._client.batchwrite_wordunits.assert_called_once_with("D100", [42])
 
     def test_write_byte_masks(self):
         d = _make_driver()
         d._write_point("D100.B", 300)
-        d._client.write_device.assert_called_once_with("D100", [44])
+        d._client.batchwrite_wordunits.assert_called_once_with("D100", [44])
 
     def test_write_int8(self):
         d = _make_driver()
         d._write_point("D100.INT8", 200)
-        d._client.write_device.assert_called_once_with("D100", [200 & 0xFF])
+        d._client.batchwrite_wordunits.assert_called_once_with("D100", [200 & 0xFF])
 
     def test_write_long_big_endian(self):
         d = _make_driver()
         d._byte_order = "big"
         d._write_point("D100.L", 0x12345678)
-        d._client.write_device.assert_called_once_with("D100", [0x1234, 0x5678])
+        d._client.batchwrite_wordunits.assert_called_once_with("D100", [0x1234, 0x5678])
 
     def test_write_long_little_endian(self):
         d = _make_driver()
         d._byte_order = "little"
         d._write_point("D100.L", 0x12345678)
-        d._client.write_device.assert_called_once_with("D100", [0x5678, 0x1234])
+        d._client.batchwrite_wordunits.assert_called_once_with("D100", [0x5678, 0x1234])
 
     def test_write_float_big_endian(self):
         d = _make_driver()
         d._byte_order = "big"
         d._write_point("D100.F", 3.14)
-        args = d._client.write_device.call_args
+        args = d._client.batchwrite_wordunits.call_args
         hi, lo = args[0][1]
         raw = struct.pack(">HH", hi, lo)
         assert abs(struct.unpack(">f", raw)[0] - 3.14) < 0.01
@@ -238,7 +240,7 @@ class TestWritePointSync:
         d = _make_driver()
         d._byte_order = "little"
         d._write_point("D100.F", 2.5)
-        args = d._client.write_device.call_args
+        args = d._client.batchwrite_wordunits.call_args
         lo, hi = args[0][1]
         raw = struct.pack("<HH", lo, hi)
         assert abs(struct.unpack("<f", raw)[0] - 2.5) < 0.01
@@ -536,12 +538,12 @@ class TestCheckConnection:
 
     def test_connected_true(self):
         d = _make_driver()
-        d._client.read_word_device.return_value = [1]
+        d._client.batchread_wordunits.return_value = [1]
         assert d._check_connection() is True
 
     def test_read_fails_false(self):
         d = _make_driver()
-        d._client.read_word_device.side_effect = RuntimeError("timeout")
+        d._client.batchread_wordunits.side_effect = RuntimeError("timeout")
         assert d._check_connection() is False
 
 
@@ -682,7 +684,7 @@ class TestStartStop:
 class TestReadPoints:
     async def test_read_single_success(self):
         d = _make_driver()
-        d._client.read_device.return_value = [100]
+        d._client.batchread_wordunits.return_value = [100]
         result = await d.read_points("dev1", ["D100"])
         assert isinstance(result["D100"], PointValue)
         assert result["D100"].value == 100
@@ -703,21 +705,21 @@ class TestReadPoints:
 
     async def test_read_bit_point(self):
         d = _make_driver()
-        d._client.read_bit_device.return_value = [1]
+        d._client.batchread_bitunits.return_value = [1]
         result = await d.read_points("dev1", ["M0"])
         assert result["M0"].value == 1
         assert result["M0"].quality == "good"
 
     async def test_read_failure_bad(self):
         d = _make_driver()
-        d._client.read_device.side_effect = RuntimeError("err")
+        d._client.batchread_wordunits.side_effect = RuntimeError("err")
         result = await d.read_points("dev1", ["D100"])
         assert result["D100"].quality == "bad"
 
     async def test_read_long_point(self):
         d = _make_driver()
         d._byte_order = "big"
-        d._client.read_device.return_value = [0x1234, 0x5678]
+        d._client.batchread_wordunits.return_value = [0x1234, 0x5678]
         result = await d.read_points("dev1", ["D100.L"])
         assert result["D100.L"].value == 0x12345678
 
@@ -733,10 +735,10 @@ class TestWritePointAsync:
     async def test_write_success_admin(self):
         d = _make_driver()
         await d.set_user_role("admin")
-        d._client.read_device.return_value = [42]
+        d._client.batchread_wordunits.return_value = [42]
         ok = await d.write_point("dev1", "D100", 42)
         assert ok is True
-        d._client.write_device.assert_called()
+        d._client.batchwrite_wordunits.assert_called()
 
     async def test_write_invalid_value(self):
         d = _make_driver()
@@ -761,14 +763,14 @@ class TestWritePointsBatch:
     async def test_batch_single_write(self):
         d = _make_driver()
         await d.set_user_role("admin")
-        d._client.read_device.return_value = [1]
+        d._client.batchread_wordunits.return_value = [1]
         result = await d.write_points_batch("dev1", {"D100": 1})
         assert result["D100"] is True
 
     async def test_batch_merged_writes(self):
         d = _make_driver()
         await d.set_user_role("admin")
-        d._client.read_device.return_value = [0]
+        d._client.batchread_wordunits.return_value = [0]
         result = await d.write_points_batch("dev1", {"D100": 1, "D101": 2, "D102": 3})
         assert all(result.values())
 
@@ -821,12 +823,12 @@ class TestHealthCheck:
 
     async def test_connected_true(self):
         d = _make_driver()
-        d._client.read_word_device.return_value = [1]
+        d._client.batchread_wordunits.return_value = [1]
         assert await d.health_check("dev1") is True
 
     async def test_check_fails_false(self):
         d = _make_driver()
-        d._client.read_word_device.side_effect = RuntimeError("fail")
+        d._client.batchread_wordunits.side_effect = RuntimeError("fail")
         assert await d.health_check("dev1") is False
 
 
@@ -952,15 +954,15 @@ class TestFx5uRead:
         d._is_fx5u = True
         d._client._accessopt = {"network": 0}
         # _parse_address classifies "U" as a bit device → suffix="bit",
-        # so _read_fx5u_slmp_direct calls read_bit_device, not read_device.
-        d._client.read_bit_device.return_value = [42]
+        # so _read_fx5u_slmp_direct calls batchread_bitunits, not batchread_wordunits.
+        d._client.batchread_bitunits.return_value = [42]
         assert d._read_point("U0\\G100") == 42
 
     def test_read_fx5u_slmp_direct_bit(self):
         d = _make_driver()
         d._is_fx5u = True
         d._client._accessopt = {"network": 0}
-        d._client.read_bit_device.return_value = [1]
+        d._client.batchread_bitunits.return_value = [1]
         assert d._read_point("U0\\G100") == 1
 
     def test_read_fx5u_slmp_direct_fallback(self):
@@ -968,7 +970,7 @@ class TestFx5uRead:
         d._is_fx5u = True
         d._client._accessopt = {"network": 0}
         d._client.set_accessopt.side_effect = ValueError("bad")
-        d._client.read_device.return_value = [99]
+        d._client.batchread_wordunits.return_value = [99]
         assert d._read_point("U0\\G100") == 99
 
     def test_read_fx5u_network(self):
@@ -976,15 +978,15 @@ class TestFx5uRead:
         d._is_fx5u = True
         d._client._accessopt = {"network": 0}
         # _parse_address classifies "J" as a bit device → suffix="bit",
-        # so _read_fx5u_network calls read_bit_device, not read_device.
-        d._client.read_bit_device.return_value = [55]
+        # so _read_fx5u_network calls batchread_bitunits, not batchread_wordunits.
+        d._client.batchread_bitunits.return_value = [55]
         assert d._read_point("J0\\D100") == 55
 
     def test_read_fx5u_network_bit(self):
         d = _make_driver()
         d._is_fx5u = True
         d._client._accessopt = {"network": 0}
-        d._client.read_bit_device.return_value = [1]
+        d._client.batchread_bitunits.return_value = [1]
         assert d._read_point("J0\\M0") == 1
 
     def test_read_fx5u_network_fallback(self):
@@ -992,7 +994,7 @@ class TestFx5uRead:
         d._is_fx5u = True
         d._client._accessopt = {"network": 0}
         d._client.set_accessopt.side_effect = ValueError("bad")
-        d._client.read_device.return_value = [77]
+        d._client.batchread_wordunits.return_value = [77]
         assert d._read_point("J0\\D100") == 77
 
 
@@ -1147,7 +1149,7 @@ class TestEdgeWriteCallback:
     async def test_callback_success(self):
         d = _make_driver()
         await d.set_user_role("admin")
-        d._client.read_device.return_value = [5]
+        d._client.batchread_wordunits.return_value = [5]
         result = await d._edge_write_callback("dev1", "D100", 5)
         assert result["success"] is True
 

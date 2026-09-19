@@ -845,13 +845,12 @@ class TestMetadataHelpers:
         assert result == {"None": None}
 
     def test_get_security_policy_map_with_policies(self, driver):
-        # When asyncua is importable, returns the full policy map.
-        fake_sp = MagicMock()
-        fake_sp.Basic128Rsa15 = "p1"
-        fake_sp.Basic256 = "p2"
-        fake_sp.Basic256Sha256 = "p3"
+        # 新版 asyncua 将策略拆分为独立类（SecurityPolicyBasic128Rsa15 等），
+        # 实现优先从模块直接导入独立类，回退到基类属性。mock 对齐新 API。
         fake_module = MagicMock()
-        fake_module.SecurityPolicy = fake_sp
+        fake_module.SecurityPolicyBasic128Rsa15 = "p1"
+        fake_module.SecurityPolicyBasic256 = "p2"
+        fake_module.SecurityPolicyBasic256Sha256 = "p3"
         with patch.dict(sys.modules, {"asyncua.crypto.security_policies": fake_module}):
             result = driver._get_security_policy_map()
         assert result["None"] is None

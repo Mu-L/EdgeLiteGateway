@@ -368,14 +368,16 @@ class TestNotificationChannelBase:
         ch = self._make_channel(max_per_minute=1)
         assert ch._check_rate_limit("k") is True
         assert ch._check_rate_limit("k") is False
-        ch._last_sent["_minute"] = "forced-old-minute"
+        # 实现用独立属性 _last_minute_key 追踪分钟（R6-S-07 重构），置为旧值模拟跨分钟
+        ch._last_minute_key = "forced-old-minute"
         assert ch._check_rate_limit("k") is True
 
     def test_check_rate_limit_expires_old_keys(self):
         ch = self._make_channel(max_per_minute=10, cooldown_seconds=0.1)
         ch._check_rate_limit("k")
         ch._last_sent["old"] = 0.0
-        ch._last_sent["_minute"] = "trigger-reset"
+        # 实现用独立属性 _last_minute_key 追踪分钟（R6-S-07 重构），置为旧值触发清理分支
+        ch._last_minute_key = "trigger-reset"
         ch._check_rate_limit("k2")
         assert "old" not in ch._last_sent
 

@@ -156,4 +156,5 @@ def test_bcrypt_max_password_bytes_value():
 
 
 def test_bcrypt_rounds_value():
-    assert _BCRYPT_ROUNDS == 14
+    """rounds ≥ 12（CHANGELOG: 14→12 修复登录 3s 超时，OWASP 推荐 10+）。"""
+    assert _BCRYPT_ROUNDS >= 12

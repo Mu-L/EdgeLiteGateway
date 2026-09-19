@@ -69,23 +69,11 @@ def contract_report(contract_module):
 #                              PUT /observability/alerts/rules/{id},
 #                              DELETE /observability/alerts/rules/{id}
 #
-# 修复方案有两种：
-#   A) 在 src/edgelite/api/*.py 中补全缺失的端点
-#   B) 修正 web/src/api/index.ts 中错误的 HTTP 方法或删除未使用的调用
-# 当前选择 xfail，等待后续修复（避免在契约校验任务中引入过大的后端改动）。
-@pytest.mark.xfail(
-    reason=(
-        "项目当前存在 25 个真实 404 缺口（前端调用了后端未实现的端点）。"
-        "详见 docs/api_contract.md 第 5.1 节。"
-        "需在后端补全端点或修正前端调用后才能移除 xfail。"
-    ),
-    strict=True,
-)
+# 历史说明：曾存在 25 个真实 404 缺口（前端调用了后端未实现的端点），详见 docs/api_contract.md。
+# 该批缺口已全部补全（后端补端点 / 前端修正调用），原 xfail(strict=True) 标记已移除，
+# 契约校验现在必须通过（exit code == 0）。
 def test_contract_check_passes():
-    """运行 scripts/check_api_contract.py，断言 exit code == 0。
-
-    当前预期 xfail（存在 25 个真实 404 缺口）。
-    """
+    """运行 scripts/check_api_contract.py，断言 exit code == 0。"""
     result = subprocess.run(
         [sys.executable, str(SCRIPT_PATH)],
         cwd=PROJECT_ROOT,

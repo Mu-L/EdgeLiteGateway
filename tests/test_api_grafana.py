@@ -56,7 +56,7 @@ def _make_grafana_config(
 @pytest.fixture
 async def client():
     """构建带认证覆盖的测试客户端，默认无服务注入"""
-    from conftest import make_app
+    from test_helpers import make_app
 
     app = make_app(router, role="admin", services={})
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:

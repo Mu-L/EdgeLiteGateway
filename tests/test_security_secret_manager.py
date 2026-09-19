@@ -73,6 +73,13 @@ def _reset_global_singletons():
     sm_module._script_sign_key_cache = None
 
 
+@pytest.fixture(autouse=True)
+def _isolate_master_key_file(tmp_path, monkeypatch):
+    """隔离主密钥持久化文件：防止本机遗留 data/.master_key 污染"生产模式拒绝启动"用例，
+    也防止 DEV_MODE 用例向真实文件写入密钥。"""
+    monkeypatch.setattr(sm_module, "_MASTER_KEY_FILE", str(tmp_path / ".master_key"))
+
+
 # ── 业务 fixtures ──
 
 

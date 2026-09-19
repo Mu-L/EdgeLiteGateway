@@ -267,6 +267,9 @@ class TestHandleAlarmEvent:
         """被静默规则拦截的告警应跳过"""
         fake_module = ModuleType("edgelite.services.alarm_silence")
         fake_mgr = MagicMock()
+        # FIXED: 实现先 await list_silences(...) 再 to_thread(is_silenced, ...)，
+        # mock 需提供 AsyncMock 的 list_silences 以匹配真实调用签名
+        fake_mgr.list_silences = AsyncMock(return_value=[])
         fake_mgr.is_silenced = MagicMock(return_value=True)
         fake_module.get_alarm_silence_manager = lambda: fake_mgr
         with patch.dict(sys.modules, {"edgelite.services.alarm_silence": fake_module}):

@@ -80,7 +80,7 @@ def mock_svc():
 @pytest.fixture
 def audit_svc():
     """Accessible mock audit service (for asserting log calls)."""
-    from conftest import make_mock_audit_service
+    from test_helpers import make_mock_audit_service
 
     return make_mock_audit_service()
 
@@ -88,7 +88,7 @@ def audit_svc():
 @pytest.fixture
 def make_app_with(mock_svc, audit_svc):
     """Factory building a test app with the platforms router; role selectable."""
-    from conftest import make_app
+    from test_helpers import make_app
 
     def _make(role: str = "admin"):
         services = {

@@ -35,7 +35,7 @@ from edgelite.api.mcp import _consume_sse_ticket, _sse_tickets, router
 
 def _services_for_mcp() -> dict:
     """构建 MCP 端点所需 app.state 服务字典"""
-    from conftest import make_mock_audit_service
+    from test_helpers import make_mock_audit_service
 
     return {
         "device_service": AsyncMock(),
@@ -50,7 +50,7 @@ def _services_for_mcp() -> dict:
 
 @pytest.fixture
 async def client():
-    from conftest import make_app
+    from test_helpers import make_app
 
     app = make_app(router, role="admin", services=_services_for_mcp())
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:

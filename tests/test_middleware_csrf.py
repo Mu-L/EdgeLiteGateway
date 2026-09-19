@@ -115,10 +115,18 @@ def test_get_secret_prefers_csrf_secret(mock_config):
 
 
 def test_get_secret_falls_back_to_secret_key(monkeypatch):
-    """F5 向后兼容: csrf_secret 为空时回退 secret_key。"""
+    """F5 向后兼容: csrf_secret 为空时回退 secret_key。
+
+    注意: 不设 DEV_MODE —— DEV_MODE=true 下 config 层会自动生成临时 csrf_secret
+    （FIXED-P0），fallback 路径不会被走到。
+    """
     monkeypatch.setenv("EDGELITE_SECURITY__SECRET_KEY", "z" * 40)
     monkeypatch.delenv("EDGELITE_SECURITY__CSRF_SECRET", raising=False)
-    monkeypatch.setenv("DEV_MODE", "true")
+    monkeypatch.delenv("DEV_MODE", raising=False)
+    # 禁用 dotenv：本机 .env 含 DEV_MODE=true 会触发 csrf_secret 自动生成，绕过 fallback 路径
+    import edgelite.config as _cfg_module
+
+    monkeypatch.setattr(_cfg_module, "load_dotenv", lambda *a, **k: None)
     from edgelite.config import reset_config
 
     reset_config()

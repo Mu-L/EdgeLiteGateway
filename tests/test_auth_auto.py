@@ -1,91 +1,99 @@
-"""自动生成测试 - src/edgelite/api/auth.py"""
+"""自动生成冒烟测试 - src.edgelite.api.auth
 
-# AUTO-GENERATED
+原始版本直接以模块级函数调用（异常即失败）。产品代码重构后目标 API 已迁入类方法，
+模块级调用全部 NameError，且真实调用会启动后台组件不清理（CI OOM 嫌疑）。
+本文件统一改为"名字解析 + 可调用断言"：目标名在模块属性或模块内任一类的属性表中
+可解析且 callable 即通过；若 API 被删改导致解析失败，测试会明确失败以标记漂移。
+"""
+# AUTO-GENERATED (rewritten by auto-test rewriter)
+
+import importlib
+import inspect
+
 import pytest
-import sys
-from pathlib import Path
 
-_root = Path(__file__).parent.parent
-if str(_root) not in sys.path:
-    sys.path.insert(0, str(_root))
+_MODULE = "src.edgelite.api.auth"
+
 try:
-    from src.edgelite.api.auth import *  # noqa
-
+    _mod = importlib.import_module(_MODULE)
     _OK = True
-except ImportError as _e:
+    _ERR = ""
+except ImportError as _e:  # pragma: no cover - 仅在依赖缺失时触发
     _OK = False
     _ERR = str(_e)
-# 删除可能被 pytest 误收集的 test 开头函数（来自 from import *）
-for _n in list(globals()):
-    if _n.startswith("test") and callable(globals()[_n]):
-        del globals()[_n]
+    _mod = None
 
 
-class TestAuthAuto:
+def _auto_resolve(name):
+    """在模块属性与模块内各类的属性表中解析 name，返回 (owner, obj) 或 (None, None)。"""
+    obj = getattr(_mod, name, None)
+    if obj is not None:
+        return _mod, obj
+    for _cname, cls in inspect.getmembers(_mod, inspect.isclass):
+        if name in cls.__dict__:
+            return cls, cls.__dict__[name]
+    return None, None
+
+
+class TestAutoSmoke:
     @pytest.fixture(autouse=True)
-    def _check(self):
+    def _require_import(self):
         if not _OK:
-            pytest.skip(f"import failed: {_ERR if not _OK else ''}")
+            pytest.skip(f"import failed: {_ERR}")
 
     def test_login_callable(self):
-        """测试 login 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(login("", "", "", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")
+        owner, obj = _auto_resolve('login')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 login：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.login 不可调用 (owner={owner!r})')
 
     def test_refresh_token_callable(self):
-        """测试 refresh_token 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(refresh_token("", "", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")
+        owner, obj = _auto_resolve('refresh_token')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 refresh_token：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.refresh_token 不可调用 (owner={owner!r})')
 
     def test_get_current_user_info_callable(self):
-        """测试 get_current_user_info 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(get_current_user_info("", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")
+        owner, obj = _auto_resolve('get_current_user_info')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 get_current_user_info：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.get_current_user_info 不可调用 (owner={owner!r})')
 
     def test_change_password_callable(self):
-        """测试 change_password 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(change_password("", "", "", "", "", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")
+        owner, obj = _auto_resolve('change_password')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 change_password：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.change_password 不可调用 (owner={owner!r})')
 
     def test_forgot_password_callable(self):
-        """测试 forgot_password 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(forgot_password("", "test", "", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")
+        owner, obj = _auto_resolve('forgot_password')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 forgot_password：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.forgot_password 不可调用 (owner={owner!r})')
 
     def test_reset_password_callable(self):
-        """测试 reset_password 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(reset_password("", "", "", "", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")
+        owner, obj = _auto_resolve('reset_password')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 reset_password：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.reset_password 不可调用 (owner={owner!r})')
 
     def test_logout_callable(self):
-        """测试 logout 可调用（import 成功即通过，调用失败 skip）"""
-        try:
-            import asyncio
+        owner, obj = _auto_resolve('logout')
+        assert obj is not None, (
+            f'{_MODULE} 中解析不到 logout：模块属性与所有类属性表均未命中，'
+            f'请确认 API 是否已删除或改名')
+        assert callable(obj) or isinstance(obj, property), (
+            f'{_MODULE}.logout 不可调用 (owner={owner!r})')
 
-            asyncio.get_event_loop().run_until_complete(logout("", "", ""))
-        except (Exception, SystemExit) as _e:
-            pytest.skip(f"调用失败（非 import 问题）: {_e}")

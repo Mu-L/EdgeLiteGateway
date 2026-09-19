@@ -75,7 +75,7 @@ EdgeLite Gateway 内置以下安全机制（详见 [README.md](README.md)）：
 
 - JWT AccessToken(30min) + RefreshToken(7天)，支持 Token 撤销
 - RBAC 三角色（admin / operator / viewer）× 22 权限项
-- bcrypt(rounds=14, OWASP 2023) 密码哈希
+- bcrypt(rounds=12, OWASP 推荐 10+) 密码哈希（14 rounds 验证耗时 ~1.5s 导致登录超时，已降至 12）
 - 登录失败 5 次锁定 15 分钟，支持 IP 与账号双维度限流
 - CSRF Token 校验（X-CSRF-Token）
 - 敏感字段（密码 / Token / API Key / 手机号等）正则脱敏

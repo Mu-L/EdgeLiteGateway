@@ -14,6 +14,7 @@ import contextlib
 import logging
 import math
 import random
+import re
 import struct
 import threading
 import time
@@ -38,6 +39,8 @@ class McDriver(DriverPlugin):
         port: 端口号 (默认5007 for iQ-R, 5002 for Q series)
         plc_type: PLC型号 (默认"iQ-R")
     """
+
+    _MC_MAX_ADDR = 0xFFFFFF  # FIXED-P0: 设备地址偏移上限（24位），防止超长地址写入非预期区域
 
     plugin_name = "mitsubishi_mc"
     plugin_version = "1.1.0"
@@ -1044,9 +1047,28 @@ class McDriver(DriverPlugin):
         - FX5U 直接模式: 使用 U{n}\G{addr} 访问模块软元件
         - FX5U 字软元件: D, W, R, T(Current), C(Current)
         - FX5U 位软元件: M, X, Y, SM, SD, L, F, V, B, SB, DX, DY, S
+
+        FIXED-P0: 增加畸形/截断/超长地址防护（协议契约负向用例）：
+        - 空地址、无标签、有标签无偏移、偏移超出 24 位上限均抛 ValueError
         """
+        # FIXED-P0: 空地址直接拒绝，防止静默返回空设备地址
+        if not address or not address.strip():
+            raise ValueError("empty MC address")
         parts = address.split(".")
         addr = parts[0]
+
+        # FIXED-P0: 地址结构校验（协议契约: 畸形/截断/超长均拒绝而非静默）
+        # FX5U SLMP 直接模式 (U{n}\G{addr}) 与链接网络 (J{n}\...) 格式特殊，跳过数字校验
+        if "\\" not in addr and not addr.upper().startswith("J"):
+            m = re.match(r"^([A-Za-z]{1,3})(\d*)$", addr)
+            if m is None:
+                raise ValueError(f"Malformed MC address: {address!r}")
+            if not m.group(2):
+                raise ValueError(f"MC address missing numeric offset: {address!r}")
+            if int(m.group(2)) > self._MC_MAX_ADDR:
+                raise ValueError(
+                    f"MC address offset out of range [0-{self._MC_MAX_ADDR}]: {address!r}"
+                )
 
         if len(parts) > 1:
             bit_suffix = parts[1]
@@ -2036,7 +2058,8 @@ class McDriver(DriverPlugin):
         elif suffix == "int8":  # FIXED-P1: int8有符号-128~127，与byte区分
             return -128 <= iv <= 127
         else:
-            return -32768 <= iv <= 65535
+            # FIXED-P0: 未知类型后缀拒绝写入，防止静默按 word 处理（协议契约负向用例）
+            return False
 
     def _record_write_audit(
         self, device_id: str, point: str, address: str, area_code: str, old_value: Any, new_value: Any, result: str

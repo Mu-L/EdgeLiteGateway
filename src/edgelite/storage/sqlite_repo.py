@@ -220,6 +220,10 @@ def _validate_device_config(config: dict, protocol: str) -> None:
     elif p == "onvif":
         _validate_onvif_config(config)
 
+    # ── Video AI ────────────────────────────────────────────────────
+    elif p in ("video_ai", "videoai"):
+        _validate_videoai_config(config)
+
     # ── Generic fallback ───────────────────────────────────────────────
     else:
         _validate_generic_config(config)
@@ -228,6 +232,18 @@ def _validate_device_config(config: dict, protocol: str) -> None:
 # ----------------------------------------------------------------------
 # Protocol-specific validators
 # ----------------------------------------------------------------------
+
+
+def _validate_videoai_config(config: dict) -> None:
+    """Video AI config: rtsp_url 必须是 rtsp:// 或 rtsps:// 地址，detect_interval 为正整数。"""
+    rtsp_url = config.get("rtsp_url")
+    if rtsp_url is not None:
+        if not isinstance(rtsp_url, str) or not rtsp_url.strip().lower().startswith(("rtsp://", "rtsps://")):
+            raise ValueError("config.rtsp_url must start with rtsp:// or rtsps://")
+    detect_interval = config.get("detect_interval")
+    if detect_interval is not None:
+        if not isinstance(detect_interval, int) or isinstance(detect_interval, bool) or detect_interval <= 0:
+            raise ValueError("config.detect_interval must be a positive integer")
 
 
 def _validate_modbus_config(config: dict, protocol: str) -> None:

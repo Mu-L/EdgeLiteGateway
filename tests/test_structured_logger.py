@@ -170,7 +170,8 @@ class TestContextFilter:
         cf.clear_context()
         record = _make_record("msg")
         cf.filter(record)
-        assert not hasattr(record, "request_id") or getattr(record, "request_id", None) is None
+        # FIXED-P0 设计：clear 后 filter 注入默认占位 "-"，防止格式化器 %(request_id)s 报 KeyError
+        assert getattr(record, "request_id", None) == "-"
 
     def test_filter_returns_true_always(self):
         cf = ContextFilter()
@@ -251,7 +252,8 @@ class TestStructuredLogger:
         sl.clear_context()
         record = _make_record("msg")
         sl._context_filter.filter(record)
-        assert getattr(record, "request_id", None) is None
+        # FIXED-P0 设计：clear 后占位 "-"（防 KeyError），而非移除属性
+        assert getattr(record, "request_id", None) == "-"
 
     def test_get_logger_static(self):
         logger = StructuredLogger.get_logger("my.logger")

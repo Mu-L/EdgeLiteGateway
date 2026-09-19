@@ -95,7 +95,7 @@ def _make_config(**kwargs):
 
 def _services():
     """注入 app.state 所需服务。"""
-    from conftest import make_mock_audit_service
+    from test_helpers import make_mock_audit_service
 
     return {"audit_service": make_mock_audit_service()}
 
@@ -103,7 +103,7 @@ def _services():
 @pytest.fixture
 async def client():
     """构建挂载 notify router 的测试客户端（admin 角色）。"""
-    from conftest import make_app
+    from test_helpers import make_app
 
     app = make_app(router, role="admin", services=_services())
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
@@ -826,7 +826,7 @@ async def test_delete_channel_internal_error(client, mock_config):
 
 async def test_list_channels_viewer_allowed():
     """VIEWER 角色拥有 ALARM_READ，可访问 list_channels。"""
-    from conftest import make_app
+    from test_helpers import make_app
 
     app = make_app(router, role="viewer", services=_services())
     config = _make_config()
@@ -841,7 +841,7 @@ async def test_list_channels_viewer_allowed():
 
 async def test_update_dingtalk_viewer_forbidden():
     """VIEWER 角色无 CONFIG_EDIT，更新渠道返回 403。"""
-    from conftest import make_app
+    from test_helpers import make_app
 
     app = make_app(router, role="viewer", services=_services())
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:

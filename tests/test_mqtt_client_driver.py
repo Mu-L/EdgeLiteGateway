@@ -1,13 +1,14 @@
 """MQTT Client 驱动单元测试
 
 覆盖 src/edgelite/drivers/mqtt_client.py 的纯函数与数据结构：
-- _is_broker_host_safe（SSRF 校验：拦截 loopback/link_local/未指定/组播/保留地址）
+- _is_broker_host_safe（SSRF 校验：放行 loopback（IoT 网关本地 broker 合理），拦截 link_local/未指定/组播/保留地址）
 - _sanitize_topic_segment（topic 注入防护：替换 / + # \\0）
 - PersistentPubQueue（SQLite 持久化离线缓冲：append/popleft/appendleft/clear/容量淘汰）
 - MqttClientDriver 类元数据
 
 设计要点：
-- SSRF 校验允许 is_private（内网 MQTT broker 合理），拦截 is_loopback/is_link_local 等
+- SSRF 校验允许 is_private（内网 MQTT broker 合理）与 is_loopback（本地 broker 合理，见
+  mqtt_client.py 模块文档），拦截 is_link_local（云元数据）/is_unspecified/is_multicast/is_reserved 等
 - PersistentPubQueue 使用 tmp_path 隔离 SQLite 文件，验证 WAL 模式与容量淘汰
 """
 
@@ -37,8 +38,9 @@ class TestIsBrokerHostSafe:
         assert _is_broker_host_safe("192.168.1.100") is True
         assert _is_broker_host_safe("10.0.0.1") is True
 
-    def test_loopback_blocked(self):
-        assert _is_broker_host_safe("127.0.0.1") is False
+    def test_loopback_allowed(self):
+        """本地 broker (127.0.0.1) 是 IoT 网关常见部署，应放行（与实现文档一致）。"""
+        assert _is_broker_host_safe("127.0.0.1") is True
 
     def test_link_local_blocked(self):
         """拦截 169.254.x.x（云元数据地址）。"""
@@ -53,16 +55,17 @@ class TestIsBrokerHostSafe:
     def test_empty_host_blocked(self):
         assert _is_broker_host_safe("") is False
 
-    def test_ipv6_loopback_blocked(self):
-        assert _is_broker_host_safe("::1") is False
+    def test_ipv6_loopback_allowed(self):
+        """IPv6 本地 broker (::1) 同样放行（实现需在 is_reserved 之前检查 is_loopback）。"""
+        assert _is_broker_host_safe("::1") is True
 
-    def test_domain_resolves_to_loopback_blocked(self):
-        """域名解析到 loopback 应被拦截。"""
+    def test_domain_resolves_to_loopback_allowed(self):
+        """域名解析到 loopback 应放行（与 loopback 直连一致的本地 broker 策略）。"""
         with patch("edgelite.drivers.mqtt_client.socket.getaddrinfo") as mock_resolve:
             mock_resolve.return_value = [
                 (0, 0, 0, 0, ("127.0.0.1", 0)),
             ]
-            assert _is_broker_host_safe("evil.example.com") is False
+            assert _is_broker_host_safe("localhost-broker.example.com") is True
 
     def test_domain_resolves_to_public_safe(self):
         with patch("edgelite.drivers.mqtt_client.socket.getaddrinfo") as mock_resolve:

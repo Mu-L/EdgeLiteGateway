@@ -176,15 +176,16 @@ class TestCheckSqlite:
 class TestCheckInfluxdb:
     @pytest.mark.asyncio
     async def test_not_initialized(self):
-        """未初始化应返回 unhealthy"""
+        """未初始化应返回 degraded（InfluxDB 可选依赖，降级 SQLite 时仍可服务）。"""
         with patch("edgelite.app._app_state", SimpleNamespace(influx_storage=None)):
             result = await _check_influxdb()
-            assert result["status"] == "unhealthy"
+            assert result["status"] == "degraded"
 
     @pytest.mark.asyncio
     async def test_healthy(self):
-        """check_health 返回 True 应为 healthy"""
+        """fallback_mode=False + check_health True 应为 healthy"""
         mock_influx = AsyncMock()
+        mock_influx.fallback_mode = AsyncMock(return_value=False)
         mock_influx.check_health = AsyncMock(return_value=True)
         with patch("edgelite.app._app_state", SimpleNamespace(influx_storage=mock_influx)):
             result = await _check_influxdb()
@@ -192,8 +193,9 @@ class TestCheckInfluxdb:
 
     @pytest.mark.asyncio
     async def test_unhealthy(self):
-        """check_health 返回 False 应为 unhealthy"""
+        """fallback_mode=False + check_health False 应为 unhealthy"""
         mock_influx = AsyncMock()
+        mock_influx.fallback_mode = AsyncMock(return_value=False)
         mock_influx.check_health = AsyncMock(return_value=False)
         with patch("edgelite.app._app_state", SimpleNamespace(influx_storage=mock_influx)):
             result = await _check_influxdb()

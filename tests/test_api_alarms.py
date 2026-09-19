@@ -37,6 +37,7 @@ from edgelite.api.deps import (
     get_alarm_service,
     get_audit_service,
     get_current_user,
+    get_database,
 )
 from edgelite.api.error_codes import AlarmErrors, AuthzErrors, CommonErrors, RepoErrors
 from edgelite.models.db import StaleDataError
@@ -73,6 +74,9 @@ def _build_app(role="admin", alarm_svc=None, audit_svc=None):
     app.dependency_overrides[get_current_user] = lambda: _make_user(role)
     app.dependency_overrides[get_alarm_service] = lambda: alarm_svc or AsyncMock()
     app.dependency_overrides[get_audit_service] = lambda: audit_svc or AsyncMock()
+    # silence/correlation 端点还注入 DatabaseDep；本文件用例不触真实 DB，
+    # 覆写为 MagicMock 避免 bare app 无容器时 503 DB_NOT_READY
+    app.dependency_overrides[get_database] = lambda: MagicMock()
     return app
 
 
@@ -80,7 +84,8 @@ def _mock_silence_module(manager=None):
     """Create a fake edgelite.services.alarm_silence module."""
     mod = ModuleType("edgelite.services.alarm_silence")
     mgr = manager or MagicMock()
-    mod.get_alarm_silence_manager = lambda: mgr
+    # 端点以 get_alarm_silence_manager(db) 形式调用，需接受位置参数
+    mod.get_alarm_silence_manager = lambda *args, **kwargs: mgr
     return mod
 
 
@@ -88,7 +93,8 @@ def _mock_correlation_module(manager=None):
     """Create a fake edgelite.services.alarm_correlation module."""
     mod = ModuleType("edgelite.services.alarm_correlation")
     mgr = manager or MagicMock()
-    mod.get_alarm_correlation_manager = lambda: mgr
+    # 端点以 get_alarm_correlation_manager(db) 形式调用，需接受位置参数
+    mod.get_alarm_correlation_manager = lambda *args, **kwargs: mgr
     return mod
 
 
@@ -601,7 +607,7 @@ class TestListAlarms:
 class TestListAlarmSilences:
     def test_admin_success_no_filters(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(return_value=[{"id": "s1", "device_id": "d1", "end_time": None}])
+        mgr.list_silences = AsyncMock(return_value=[{"id": "s1", "device_id": "d1", "end_time": None}])
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -616,7 +622,7 @@ class TestListAlarmSilences:
 
     def test_status_active_sets_active_only_true(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(return_value=[])
+        mgr.list_silences = AsyncMock(return_value=[])
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -632,7 +638,7 @@ class TestListAlarmSilences:
         mgr = MagicMock()
         past_time = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
         future_time = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
-        mgr.list_silences = MagicMock(
+        mgr.list_silences = AsyncMock(
             return_value=[
                 {"id": "s1", "end_time": past_time},
                 {"id": "s2", "end_time": future_time},
@@ -653,7 +659,7 @@ class TestListAlarmSilences:
 
     def test_status_cancelled_filters_cancelled_at(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(
+        mgr.list_silences = AsyncMock(
             return_value=[
                 {"id": "s1", "cancelled_at": "2026-01-01T00:00:00Z"},
                 {"id": "s2", "cancelled_at": None},
@@ -673,7 +679,7 @@ class TestListAlarmSilences:
 
     def test_non_admin_filters_by_accessible_devices(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(
+        mgr.list_silences = AsyncMock(
             return_value=[
                 {"id": "s1", "device_id": "d1"},
                 {"id": "s2", "device_id": "d2"},
@@ -702,7 +708,7 @@ class TestListAlarmSilences:
 
     def test_device_id_filter_passed_to_manager(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(return_value=[])
+        mgr.list_silences = AsyncMock(return_value=[])
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -715,7 +721,7 @@ class TestListAlarmSilences:
 
     def test_rule_id_filter_passed_to_manager(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(return_value=[])
+        mgr.list_silences = AsyncMock(return_value=[])
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -728,7 +734,7 @@ class TestListAlarmSilences:
 
     def test_pagination_slices_results(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(return_value=[{"id": f"s{i}"} for i in range(25)])
+        mgr.list_silences = AsyncMock(return_value=[{"id": f"s{i}"} for i in range(25)])
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -744,7 +750,7 @@ class TestListAlarmSilences:
 
     def test_service_error_returns_500(self):
         mgr = MagicMock()
-        mgr.list_silences = MagicMock(side_effect=RuntimeError("fail"))
+        mgr.list_silences = AsyncMock(side_effect=RuntimeError("fail"))
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1473,7 +1479,7 @@ class TestSuppressAlarm:
 class TestCreateAlarmSilence:
     def test_admin_success(self):
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(return_value={"id": "s1", "device_id": "d1"})
+        mgr.create_silence = AsyncMock(return_value={"id": "s1", "device_id": "d1"})
         audit = AsyncMock()
         app = _build_app("admin", audit_svc=audit)
         client = TestClient(app)
@@ -1496,7 +1502,7 @@ class TestCreateAlarmSilence:
     def test_admin_global_silence_allowed(self):
         """Admin can create global silence (empty device_id)."""
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(return_value={"id": "s1"})
+        mgr.create_silence = AsyncMock(return_value={"id": "s1"})
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1522,7 +1528,7 @@ class TestCreateAlarmSilence:
 
     def test_non_admin_with_device_access(self):
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(return_value={"id": "s1"})
+        mgr.create_silence = AsyncMock(return_value={"id": "s1"})
         app = _build_app("operator")
         client = TestClient(app)
         with (
@@ -1562,7 +1568,7 @@ class TestCreateAlarmSilence:
 
     def test_value_error_returns_422(self):
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(side_effect=ValueError("bad time"))
+        mgr.create_silence = AsyncMock(side_effect=ValueError("bad time"))
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1575,7 +1581,7 @@ class TestCreateAlarmSilence:
 
     def test_service_error_returns_500(self):
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(side_effect=RuntimeError("fail"))
+        mgr.create_silence = AsyncMock(side_effect=RuntimeError("fail"))
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1588,7 +1594,7 @@ class TestCreateAlarmSilence:
 
     def test_audit_log_failure_swallowed(self):
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(return_value={"id": "s1"})
+        mgr.create_silence = AsyncMock(return_value={"id": "s1"})
         audit = AsyncMock()
         audit.log = AsyncMock(side_effect=RuntimeError("audit down"))
         app = _build_app("admin", audit_svc=audit)
@@ -1605,7 +1611,7 @@ class TestCreateAlarmSilence:
 
     def test_create_silence_passed_all_params(self):
         mgr = MagicMock()
-        mgr.create_silence = MagicMock(return_value={"id": "s1"})
+        mgr.create_silence = AsyncMock(return_value={"id": "s1"})
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1641,8 +1647,8 @@ class TestCreateAlarmSilence:
 class TestDeleteAlarmSilence:
     def test_admin_success(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value={"id": "s1", "device_id": "d1", "reason": "test"})
-        mgr.delete_silence = MagicMock(return_value=True)
+        mgr.get_silence_by_id = AsyncMock(return_value={"id": "s1", "device_id": "d1", "reason": "test"})
+        mgr.delete_silence = AsyncMock(return_value=True)
         audit = AsyncMock()
         app = _build_app("admin", audit_svc=audit)
         client = TestClient(app)
@@ -1661,8 +1667,8 @@ class TestDeleteAlarmSilence:
 
     def test_not_found_returns_404(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value=None)
-        mgr.delete_silence = MagicMock(return_value=False)
+        mgr.get_silence_by_id = AsyncMock(return_value=None)
+        mgr.delete_silence = AsyncMock(return_value=False)
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1675,8 +1681,8 @@ class TestDeleteAlarmSilence:
 
     def test_delete_returns_false_returns_404(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value={"id": "s1", "device_id": "d1"})
-        mgr.delete_silence = MagicMock(return_value=False)
+        mgr.get_silence_by_id = AsyncMock(return_value={"id": "s1", "device_id": "d1"})
+        mgr.delete_silence = AsyncMock(return_value=False)
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1688,7 +1694,7 @@ class TestDeleteAlarmSilence:
 
     def test_non_admin_not_found_returns_404(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value=None)
+        mgr.get_silence_by_id = AsyncMock(return_value=None)
         app = _build_app("operator")
         client = TestClient(app)
         with patch.dict(
@@ -1702,7 +1708,7 @@ class TestDeleteAlarmSilence:
     def test_non_admin_global_silence_returns_403(self):
         """Non-admin cannot delete global silence (empty device_id)."""
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value={"id": "s1", "device_id": ""})
+        mgr.get_silence_by_id = AsyncMock(return_value={"id": "s1", "device_id": ""})
         app = _build_app("operator")
         client = TestClient(app)
         with patch.dict(
@@ -1715,8 +1721,8 @@ class TestDeleteAlarmSilence:
 
     def test_non_admin_with_device_access(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value={"id": "s1", "device_id": "d1"})
-        mgr.delete_silence = MagicMock(return_value=True)
+        mgr.get_silence_by_id = AsyncMock(return_value={"id": "s1", "device_id": "d1"})
+        mgr.delete_silence = AsyncMock(return_value=True)
         app = _build_app("operator")
         client = TestClient(app)
         with (
@@ -1734,7 +1740,7 @@ class TestDeleteAlarmSilence:
 
     def test_non_admin_without_device_access_returns_403(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value={"id": "s1", "device_id": "d1"})
+        mgr.get_silence_by_id = AsyncMock(return_value={"id": "s1", "device_id": "d1"})
         app = _build_app("operator")
         client = TestClient(app)
         with (
@@ -1758,7 +1764,7 @@ class TestDeleteAlarmSilence:
 
     def test_service_error_returns_500(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(side_effect=RuntimeError("fail"))
+        mgr.get_silence_by_id = AsyncMock(side_effect=RuntimeError("fail"))
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(
@@ -1771,8 +1777,8 @@ class TestDeleteAlarmSilence:
 
     def test_audit_log_failure_swallowed(self):
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value={"id": "s1", "device_id": "d1"})
-        mgr.delete_silence = MagicMock(return_value=True)
+        mgr.get_silence_by_id = AsyncMock(return_value={"id": "s1", "device_id": "d1"})
+        mgr.delete_silence = AsyncMock(return_value=True)
         audit = AsyncMock()
         audit.log = AsyncMock(side_effect=RuntimeError("audit down"))
         app = _build_app("admin", audit_svc=audit)
@@ -1791,8 +1797,8 @@ class TestDeleteAlarmSilence:
         """Admin: get_silence_by_id returns None but delete_silence returns True.
         The _silence_info will be None but deletion succeeds."""
         mgr = MagicMock()
-        mgr.get_silence_by_id = MagicMock(return_value=None)
-        mgr.delete_silence = MagicMock(return_value=True)
+        mgr.get_silence_by_id = AsyncMock(return_value=None)
+        mgr.delete_silence = AsyncMock(return_value=True)
         app = _build_app("admin")
         client = TestClient(app)
         with patch.dict(

@@ -759,9 +759,10 @@ class TestEvalScript:
         assert result is False
 
     async def test_script_import_error_returns_false(self):
-        """sandbox 模块不存在时 (ImportError) 返回 False"""
-        # 不 patch，让真实导入失败 (edgelite.engine.sandbox 不存在)
-        result = await RuleEvaluator._eval_script("result = True", {"p1": 10})
+        """sandbox 模块导入失败 (ImportError) 返回 False"""
+        # sandbox 模块现已实现（FIXED-P0），通过 sys.modules 注入 None 模拟导入失败
+        with patch.dict(sys.modules, {"edgelite.engine.sandbox": None}):
+            result = await RuleEvaluator._eval_script("result = True", {"p1": 10})
         assert result is False
 
 

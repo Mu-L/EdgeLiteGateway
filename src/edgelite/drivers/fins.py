@@ -148,7 +148,11 @@ class FinsConnState(StrEnum):
 
 
 class FinsResponseError(Exception):
-    def __init__(self, fins_code: int, error_code: str, message: str):
+    def __init__(self, fins_code: int | str = 0, error_code: str = "", message: str = ""):
+        # FIXED-P0: 兼容 message-only 构造（协议契约用例），保持 3 参数位置调用兼容
+        if isinstance(fins_code, str) and not error_code and not message:
+            message = fins_code
+            fins_code = 0
         super().__init__(message)
         self.fins_code = fins_code
         self.error_code = error_code
@@ -894,7 +898,13 @@ class OmronFinsDriver(DriverPlugin):
             if math.isnan(fv) or math.isinf(fv):
                 return False, f"real value must not be NaN/Inf, got {fv}"
             return True, ""
-        return True, ""
+        if data_type == "str":
+            # FIXED-P0: 字符串类型仅接受字符串值，防止任意对象静默写入
+            if not isinstance(value, str):
+                return False, f"str value must be a string, got {type(value).__name__}"
+            return True, ""
+        # FIXED-P0: 未知数据类型拒绝写入，防止静默放行（协议契约负向用例）
+        return False, f"unsupported data type: {data_type}"
 
     def _check_write_rate(self, point: str) -> tuple[bool, float]:
         if self._write_rate_limit_ms <= 0:

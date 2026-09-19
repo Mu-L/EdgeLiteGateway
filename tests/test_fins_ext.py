@@ -245,7 +245,7 @@ class TestValidateWriteValue:
             (float("inf"), "float", False),
             (2.718, "r", True),
             (float("nan"), "r", False),
-            (42, "unknown", True),
+            (42, "unknown", False),  # FIXED-P0: 未知数据类型拒绝写入（协议契约，防静默放行）
         ],
     )
     def test_validate(self, val, dt, ok):
@@ -948,7 +948,8 @@ class TestFinsTcpRequestInner:
         d._timeout = 5.0
         d._max_response_size = 65536
         d._primary_ip = "10.0.0.1"
-        resp = bytes(10) + struct.pack(">H", 0x0101) + bytes(2)
+        # 响应帧结构: 10字节header + MRC/SRC(2) + End code(2) + data(2)，end code 在 [12:14]
+        resp = bytes(10) + bytes([0x01, 0x00]) + struct.pack(">H", 0x0101) + bytes(2)
         s = _mksock(resp)
         d._client = MagicMock()
         d._client.fins_socket = s
@@ -961,7 +962,8 @@ class TestFinsTcpRequestInner:
         d._timeout = 5.0
         d._max_response_size = 65536
         d._primary_ip = "10.0.0.1"
-        resp = bytes(10) + struct.pack(">H", 0x1101) + bytes(2)
+        # 响应帧结构: 10字节header + MRC/SRC(2) + End code(2) + data(2)，end code 在 [12:14]
+        resp = bytes(10) + bytes([0x01, 0x02]) + struct.pack(">H", 0x1101) + bytes(2)
         s = _mksock(resp)
         d._client = MagicMock()
         d._client.fins_socket = s

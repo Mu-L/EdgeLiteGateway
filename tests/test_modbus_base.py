@@ -407,9 +407,11 @@ class TestConstantDictionaries:
             assert name in _BYTE_ORDER_FMT
 
     def test_byte_order_fmt_values_are_tuples(self):
-        for _name, (reg_pack, val_unpack) in _BYTE_ORDER_FMT.items():
+        # 实现为 3 元组 (reg_pack, val_unpack, word_swap)，新增字交换标志
+        for _name, (reg_pack, val_unpack, word_swap) in _BYTE_ORDER_FMT.items():
             assert reg_pack in (">", "<")
             assert val_unpack in (">", "<")
+            assert word_swap in (True, False)
 
 
 # ════════════════════════════════════════════════════════════════════════

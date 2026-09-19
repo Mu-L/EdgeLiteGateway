@@ -454,8 +454,9 @@ class TestGetBackupSchedule:
 
 class TestTriggerBackup:
     def test_trigger_success(self, client, mock_audit_svc):
+        # 对齐真实 BackupResult dataclass 字段（source/backup_path/success/error/duration_ms）
         mock_result = SimpleNamespace(
-            component="main_db",
+            source="main_db",
             success=True,
             backup_path="/tmp/backup.db",
             error=None,
@@ -1257,9 +1258,8 @@ class TestRotateCert:
             mqtt_server=SimpleNamespace(tls=SimpleNamespace(ca_path="/tmp/ca.pem", cert_path=None))
         )
         mock_cert_mgr = MagicMock()
-        mock_cert_mgr.validate_cert = MagicMock(
-            return_value={"valid": True, "not_after": "2026-12-31", "days_remaining": 180}
-        )
+        # 对齐真实 CertManager.validate_cert 返回类型（bool，见 tls_security.py:79）
+        mock_cert_mgr.validate_cert = MagicMock(return_value=True)
         with (
             patch("edgelite.config.get_config", return_value=mock_config),
             patch("pathlib.Path.exists", return_value=True),
@@ -1269,7 +1269,6 @@ class TestRotateCert:
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert data["certificates"]["mqtt_ca"]["status"] == "valid"
-        assert data["certificates"]["mqtt_ca"]["days_remaining"] == 180
 
     def test_rotate_cert_error(self, client):
         mock_config = SimpleNamespace(

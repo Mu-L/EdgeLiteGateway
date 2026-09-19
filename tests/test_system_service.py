@@ -425,11 +425,11 @@ class TestRestoreBackup:
             "users": [{"user_id": "u1", "username": "admin"}],
         }
         (backup_dir / "backup_20260101_120000.json").write_text(json.dumps(data), encoding="utf-8")
-        repos["device_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["device_repo"].get = AsyncMock(return_value=None)
         repos["device_repo"].create = AsyncMock(return_value="d1")
-        repos["rule_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["rule_repo"].get = AsyncMock(return_value=None)
         repos["rule_repo"].create = AsyncMock(return_value="r1")
-        repos["user_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["user_repo"].get = AsyncMock(return_value=None)
         repos["user_repo"].create = AsyncMock(return_value="u1")
         app_state = MagicMock()
         app_state.evaluator = None
@@ -450,11 +450,11 @@ class TestRestoreBackup:
             "users": [{"user_id": "u1", "username": "admin"}],
         }
         (backup_dir / "backup_20260101_120000.json").write_text(json.dumps(data), encoding="utf-8")
-        repos["device_repo"].get_by_id = AsyncMock(return_value={"device_id": "d1"})
+        repos["device_repo"].get = AsyncMock(return_value={"device_id": "d1"})
         repos["device_repo"].update = AsyncMock(return_value=None)
-        repos["rule_repo"].get_by_id = AsyncMock(return_value={"rule_id": "r1"})
+        repos["rule_repo"].get = AsyncMock(return_value={"rule_id": "r1"})
         repos["rule_repo"].update = AsyncMock(return_value=None)
-        repos["user_repo"].get_by_id = AsyncMock(return_value={"user_id": "u1"})
+        repos["user_repo"].get = AsyncMock(return_value={"user_id": "u1"})
         repos["user_repo"].update = AsyncMock(return_value=None)
         app_state = MagicMock()
         app_state.evaluator = None
@@ -475,11 +475,11 @@ class TestRestoreBackup:
             "users": [{"user_id": None}, {"user_id": "u1"}],
         }
         (backup_dir / "backup_20260101_120000.json").write_text(json.dumps(data), encoding="utf-8")
-        repos["device_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["device_repo"].get = AsyncMock(return_value=None)
         repos["device_repo"].create = AsyncMock(return_value="d1")
-        repos["rule_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["rule_repo"].get = AsyncMock(return_value=None)
         repos["rule_repo"].create = AsyncMock(return_value="r1")
-        repos["user_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["user_repo"].get = AsyncMock(return_value=None)
         repos["user_repo"].create = AsyncMock(return_value="u1")
         app_state = MagicMock()
         app_state.evaluator = None
@@ -506,7 +506,7 @@ class TestRestoreBackup:
 
         # Both devices go to create branch; first succeeds (appended to rollback
         # list), second fails (triggers rollback which deletes only created ones)
-        async def _device_get_by_id(dev_id):
+        async def _device_get(dev_id):
             return None
 
         create_calls = {"n": 0}
@@ -517,7 +517,7 @@ class TestRestoreBackup:
                 raise RuntimeError("create failed")
             return dev["device_id"]
 
-        repos["device_repo"].get_by_id = _device_get_by_id
+        repos["device_repo"].get = _device_get
         repos["device_repo"].create = _device_create
         repos["device_repo"].delete = AsyncMock(return_value=None)
         app_state = MagicMock()
@@ -573,7 +573,7 @@ class TestRestoreBackup:
             "users": [],
         }
         (backup_dir / "backup_20260101_120000.json").write_text(json.dumps(data), encoding="utf-8")
-        repos["device_repo"].get_by_id = AsyncMock(return_value=None)
+        repos["device_repo"].get = AsyncMock(return_value=None)
         repos["device_repo"].create = AsyncMock(side_effect=RuntimeError("create failed"))
         repos["device_repo"].delete = AsyncMock(side_effect=OSError("delete failed"))
         app_state = MagicMock()
