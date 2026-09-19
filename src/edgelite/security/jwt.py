@@ -156,7 +156,11 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     now = datetime.now(UTC)
     expire = now + (expires_delta or timedelta(minutes=config.security.access_token_expire_minutes))
     # FIXED-C02: 显式添加 iat 用于密码修改后 Token 失效检查
-    to_encode.update({"exp": expire, "iat": now, "type": data.get("type", "access")})
+    # FIXED-SEC2: iat 用浮点秒（RFC 7519 NumericDate 允许小数）— 原先 PyJWT 将
+    # datetime 序列化为整秒，同秒内"改密→重登录"的新 token iat 截断后早于
+    # password_changed_at，被 deps.py 误判为旧 token 401（CI smoke 实证；
+    # 用户改密后立即被登出属真实 UX 缺陷）[2026-09-19]
+    to_encode.update({"exp": expire, "iat": now.timestamp(), "type": data.get("type", "access")})
     key = _get_reset_secret_key() if data.get("type") == "password_reset" else _resolve_secret_key()
     # FIXED: 添加 kid header 支持密钥轮换 [2026-06-29]
     headers = {"kid": config.security.key_id} if data.get("type") != "password_reset" else None
@@ -175,7 +179,8 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
     now = datetime.now(UTC)
     expire = now + (expires_delta or timedelta(days=config.security.refresh_token_expire_days))
     # FIXED-C02: 显式添加 iat 用于密码修改后 Token 失效检查
-    to_encode.update({"exp": expire, "iat": now, "type": "refresh"})
+    # FIXED-SEC2: 同上 — iat 浮点秒避免整秒截断竞态 [2026-09-19]
+    to_encode.update({"exp": expire, "iat": now.timestamp(), "type": "refresh"})
     # FIXED: 添加 kid header 支持密钥轮换 [2026-06-29]
     headers = {"kid": config.security.key_id}
     return jwt.encode(to_encode, _resolve_secret_key(), algorithm=config.security.algorithm, headers=headers)
