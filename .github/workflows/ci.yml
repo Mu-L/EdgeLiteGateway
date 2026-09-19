@@ -295,8 +295,9 @@ jobs:
         # editable" 反而失败，实测）[2026-09-19]
         run: pip-audit --skip-editable --desc
       - name: Generate SBOM (CycloneDX)
+        # FIXED-CI: 新版 cyclonedx-py（v7+）参数更名 --schema-version → --spec-version [2026-09-19]
         run: |
-          cyclonedx-py environment -o sbom.json --schema-version 1.5
+          cyclonedx-py environment -o sbom.json --spec-version 1.5
       - name: Upload SBOM artifact
         if: always()
         uses: actions/upload-artifact@v4
