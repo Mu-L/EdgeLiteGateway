@@ -198,12 +198,16 @@ def test_ai_models_enhanced_endpoints_exist():
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_all_new_modules_registered_in_app():
+def test_all_new_modules_registered_in_app(monkeypatch):
     """404修复: create_app() 后所有新模块路由可访问
 
     FastAPI 0.110+ 中 include_router 会将子 router 包成 _IncludedRouter 实例，
     需通过 original_router 属性解包才能拿到子 APIRouter 的 routes。
     """
+    # FIXED-CI: CI 环境无 data/.master_key 且非 DEV_MODE，create_app 初始化
+    # SecretManager 时会以生产模式拒绝启动；本地因 .env 泄漏 DEV_MODE=true 被掩盖。
+    # 显式注入测试主密钥，保证测试自身环境自洽 [2026-09-19]
+    monkeypatch.setenv("EDGELITE_MASTER_KEY", "ci-test-master-key-0123456789abcdef")
     from edgelite.app import create_app
 
     app = create_app()

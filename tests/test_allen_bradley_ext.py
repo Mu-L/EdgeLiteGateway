@@ -261,9 +261,11 @@ class TestRateOfChange:
         d = _make_driver()
         d._rate_of_change_limit = 1000.0
         d._set_last_value("p1", 0.0)
+        # FIXED-CI: 原用两次 now() 取时间戳，CI 快速机器上 dt 仅几微秒，
+        # rate=1.0/µs 级被误判超限；改为确定性的 1 秒间隔 [2026-09-19]
         ts1 = datetime.now(UTC)
         d._last_timestamps["p1"] = ts1
-        ts2 = datetime.now(UTC)
+        ts2 = ts1 + timedelta(seconds=1)
         assert d._check_rate_of_change("p1", 1.0, ts2) is False
 
 

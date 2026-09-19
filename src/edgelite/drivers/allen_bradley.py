@@ -664,8 +664,14 @@ class AllenBradleyDriver(DriverPlugin):
 
     def _check_degradation(self, device_id: str) -> None:
         now = time.monotonic()
+        # FIXED-CI: 原条件 s.last_access_time > 0 假设 monotonic 值远大于 3600，
+        # 但 Linux 全新运行器/刚开机的工控机 uptime 可能只有几分钟，久未访问点
+        # 的 last_access_time 会是负值，导致过期点永远无法清理；last_access_time
+        # 的哨兵值是 0（PointHealthStats 默认，表示从未访问），改用 != 0 判定 [2026-09-19]
         stale_points = [
-            p for p, s in self._point_stats.items() if s.last_access_time > 0 and (now - s.last_access_time) > 3600
+            p
+            for p, s in self._point_stats.items()
+            if s.last_access_time != 0 and (now - s.last_access_time) > 3600
         ]
         for p in stale_points:
             del self._point_stats[p]
