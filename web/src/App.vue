@@ -46,7 +46,14 @@ const naiveDateLocale = computed(() => currentLocale.value === 'en-US' ? dateEnU
 watch(isDark, (v) => setDiscreteApiTheme(v), { immediate: true })
 
 // FIXED: 全局 WebSocket 错误处理 — 重连失败时提示用户
+// FIXED-UX: 多频道（alarm/device/...）同时断连会各发一次事件，
+// 原实现对每个事件都弹窗，造成重复弹窗轰炸；节流为同一断连窗口只提示一次 [2026-09-19]
+let _lastWsFailNotifyTs = 0
+const WS_NOTIFY_THROTTLE_MS = 60_000
 const handleWsReconnectFailed = () => {
+  const now = Date.now()
+  if (now - _lastWsFailNotifyTs < WS_NOTIFY_THROTTLE_MS) return
+  _lastWsFailNotifyTs = now
   notification.warning({
     title: t('ws.reconnectFailedTitle'),
     content: t('ws.reconnectFailedContent'),

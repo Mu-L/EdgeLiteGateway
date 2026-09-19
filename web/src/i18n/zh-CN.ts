@@ -4640,7 +4640,7 @@ const zhCN: LocaleMessages = {
     serialBridge: '串口透传',
     serviceOverview: '服务总览',
     aiModel: 'AI模型',
-    aiGroup: 'AI 智能中心',
+    aiGroup: '智能中心', // FIXED-UX: 菜单徽标已含"AI"字样，文字不再重复，避免渲染为"AI AI 智能中心"
     notifyChannels: '通知渠道',
     visualGroup: '可视化',
     serviceGroup: '服务管理',

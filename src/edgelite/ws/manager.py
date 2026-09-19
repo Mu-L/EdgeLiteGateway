@@ -9,6 +9,7 @@ import logging
 import time
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import WebSocket
 
@@ -78,7 +79,19 @@ class ConnectionManager:
         if not origin:
             # 非浏览器客户端（如 curl/Postman）无 Origin 头，允许通过（依赖 token 认证）
             return True
-        return origin in self._allowed_origins
+        if origin in self._allowed_origins:
+            return True
+        # FIXED-UX: 同源请求放行 — 页面对自身 Host 发起的 WS 不可能是跨站劫持（CSWSH
+        # 攻击者无法伪造受害者的源）。此前白名单遗漏实际部署端口（如 run.py 默认 8080）
+        # 时，同源实时推送被误杀，前端无限重连并弹窗轰炸 [2026-09-19]
+        host = websocket.headers.get("host", "")
+        if host:
+            try:
+                if urlparse(origin).netloc == host:
+                    return True
+            except (ValueError, AttributeError):
+                pass
+        return False
 
     async def connect(self, websocket: WebSocket, channel: str, token: str | None = None) -> bool:
         """建立WebSocket连接，验证Token

@@ -5,10 +5,11 @@
  * discovery, import/export, and configuration comparison.
  */
 import { ref, reactive, computed, onMounted, onUnmounted, watch, h, type Ref, type ComputedRef } from 'vue'
-import { NButton } from 'naive-ui'
+import { NButton, NTag } from 'naive-ui'
 import http from '@/api/http'
 import { deviceApi, type Device, type DeviceCreateParams, type PointDef } from '@/api'
 import { dialog, message } from '@/utils/discreteApi'
+import { deviceStatusLabel, deviceStatusColor } from '@/utils/enumLabels'
 import { t } from '@/i18n'
 import { extractError } from '@/utils/errorCodes'
 import { connect, disconnect, onStatus, offStatus } from '@/api/websocket'
@@ -293,7 +294,15 @@ export function useDeviceList() {
     { title: t('deviceList.deviceId'), key: 'device_id', width: 150, sorter: true },
     { title: t('deviceList.name'), key: 'name', width: 150 },
     { title: t('deviceList.protocol'), key: 'protocol', width: 120 },
-    { title: t('deviceList.status'), key: 'status', width: 100 },
+    // FIXED-UX: 状态列原样吐后端枚举（online/offline），违反"状态须显示中文"要求；
+    // 改为与卡片视图一致的中文标签 + 颜色 tag [2026-09-19]
+    {
+      title: t('deviceList.status'),
+      key: 'status',
+      width: 100,
+      render: (row: any) =>
+        h(NTag, { size: 'small', type: deviceStatusColor[row.status] || 'default' }, { default: () => deviceStatusLabel.value[row.status] || row.status }),
+    },
     { title: t('deviceList.collectInterval'), key: 'collect_interval', width: 100 },
     {
       title: t('common.actions'),

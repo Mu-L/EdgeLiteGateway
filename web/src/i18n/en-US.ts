@@ -4623,7 +4623,7 @@ const enUS: LocaleMessages = {
     serialBridge: 'Serial Bridge',
     serviceOverview: 'Service Overview',
     aiModel: 'AI Models',
-    aiGroup: 'AI Intelligence Center',
+    aiGroup: 'Intelligence Center', // FIXED-UX: badge already shows "AI", avoid "AI AI Intelligence Center"
     notifyChannels: 'Notification Channels',
     visualGroup: 'Visualization',
     serviceGroup: 'Service Management',
