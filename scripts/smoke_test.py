@@ -95,7 +95,9 @@ def smoke_test(base_url: str, username: str, password: str) -> bool:
                     )
                     token = r3.json().get("data", {}).get("access_token") if r3.status_code == 200 else None
                     relogin = "ok" if token else "fail"
-                    results.append(("first-login password change", token is not None, f"HTTP {r2.status_code} relogin={relogin}"))
+                    results.append(
+                        ("first-login password change", token is not None, f"HTTP {r2.status_code} relogin={relogin}")
+                    )
                 else:
                     results.append(("first-login password change", False, f"HTTP {r2.status_code}: {r2.text[:100]}"))
         except Exception as e:
