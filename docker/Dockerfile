@@ -69,7 +69,9 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
     CMD python -c "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:8080/health/live', timeout=5).status == 200 else 1)"
 
-# FIXED: 移除硬编码 --port 8080，端口通过 EDGELITE_SERVER__PORT 环境变量配置
-# __main__.py 已从 os.environ.get("EDGELITE_SERVER__PORT", "8080") 读取默认值
+# FIXED(2026-09-19): 恢复 --port 8080 — __main__.py 默认端口已改为 8180（与
+# 本地部署及前端代理对齐），但镜像 EXPOSE/HEALTHCHECK 均为 8080，裸 docker run
+# 时应用监听 8180 导致健康检查必败（CI smoke/acceptance 实证）。镜像内固定
+# 8080 与镜像声明自洽；compose 部署仍可用 EDGELITE_SERVER__PORT 覆盖（同为 8080）
 # 保留 --host 0.0.0.0 因为容器内必须监听所有网卡（默认 127.0.0.1 无法从外部访问）
-CMD ["python", "-m", "edgelite", "--host", "0.0.0.0"]
+CMD ["python", "-m", "edgelite", "--host", "0.0.0.0", "--port", "8080"]
