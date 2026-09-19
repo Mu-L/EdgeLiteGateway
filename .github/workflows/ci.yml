@@ -143,14 +143,25 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build edgelite image (no push)
+        # FIXED-CI: 原先 push:false 本地构建后镜像留在本 runner，下游 smoke/
+        # acceptance/security 在另一台 runner 上 docker run edgelite:ci 直接
+        # "pull access denied"（此三个 job 在 Lint/Test 阻塞时代从未真正跑过）；
+        # 改为导出 tar 经 artifact 传递，下游 docker load [2026-09-19]
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           push: false
           tags: edgelite:ci
+          outputs: type=docker,dest=/tmp/edgelite-image.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edgelite-image
+          path: /tmp/edgelite-image.tar
+          retention-days: 1
 
   smoke-test:
     name: Smoke test (E2E)
@@ -164,6 +175,13 @@ jobs:
           cache: pip
       - name: Install httpx for smoke test
         run: pip install httpx
+      - name: Download and load image from docker job
+        uses: actions/download-artifact@v4
+        with:
+          name: edgelite-image
+          path: /tmp
+      - name: Load image
+        run: docker load -i /tmp/edgelite-image.tar
       - name: Start EdgeLite container
         run: |
           docker run -d --name edgelite-smoke \
@@ -208,6 +226,13 @@ jobs:
           cache: pip
       - name: Install httpx for acceptance check
         run: pip install httpx
+      - name: Download and load image from docker job
+        uses: actions/download-artifact@v4
+        with:
+          name: edgelite-image
+          path: /tmp
+      - name: Load image
+        run: docker load -i /tmp/edgelite-image.tar
       # 启动 EdgeLite 容器（参考 smoke-test job 的启动方式）
       - name: Start EdgeLite container
         run: |
@@ -282,8 +307,18 @@ jobs:
           path: requirements.lock
           if-no-files-found: warn
           retention-days: 30
+      - name: Download and load image from docker job
+        # FIXED-CI: Trivy 镜像扫描需要 edgelite:ci，与 smoke/acceptance 同源 [2026-09-19]
+        uses: actions/download-artifact@v4
+        with:
+          name: edgelite-image
+          path: /tmp
+      - name: Load image
+        run: docker load -i /tmp/edgelite-image.tar
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.24.0
+        # FIXED-CI: @0.24.0 无 v 前缀，该仓库 tag 实际为 v0.24.0 起，
+        # 无法解析导致 security job 首步即败；升级到 v0.36.0 [2026-09-19]
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -291,7 +326,7 @@ jobs:
           exit-code: 1
           format: table
       - name: Run Trivy Docker image scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           scan-ref: edgelite:ci
