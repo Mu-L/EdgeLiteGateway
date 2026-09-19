@@ -42,58 +42,50 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_load_rules_callable(self):
-        owner, obj = _auto_resolve('load_rules')
+        owner, obj = _auto_resolve("load_rules")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 load_rules：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.load_rules 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 load_rules：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.load_rules 不可调用 (owner={owner!r})"
 
     def test_save_rule_callable(self):
-        owner, obj = _auto_resolve('save_rule')
+        owner, obj = _auto_resolve("save_rule")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 save_rule：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.save_rule 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 save_rule：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.save_rule 不可调用 (owner={owner!r})"
 
     def test_delete_rule_callable(self):
-        owner, obj = _auto_resolve('delete_rule')
+        owner, obj = _auto_resolve("delete_rule")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 delete_rule：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.delete_rule 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 delete_rule：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.delete_rule 不可调用 (owner={owner!r})"
 
     def test_rollback_callable(self):
-        owner, obj = _auto_resolve('rollback')
+        owner, obj = _auto_resolve("rollback")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.rollback 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.rollback 不可调用 (owner={owner!r})"
 
     def test_get_versions_callable(self):
-        owner, obj = _auto_resolve('get_versions')
+        owner, obj = _auto_resolve("get_versions")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_versions：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_versions 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_versions：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_versions 不可调用 (owner={owner!r})"
 
     def test_cleanup_orphan_rules_callable(self):
-        owner, obj = _auto_resolve('cleanup_orphan_rules')
+        owner, obj = _auto_resolve("cleanup_orphan_rules")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 cleanup_orphan_rules：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.cleanup_orphan_rules 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 cleanup_orphan_rules：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.cleanup_orphan_rules 不可调用 (owner={owner!r})"
 
     def test_stop_callable(self):
-        owner, obj = _auto_resolve('stop')
+        owner, obj = _auto_resolve("stop")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.stop 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.stop 不可调用 (owner={owner!r})"

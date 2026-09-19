@@ -42,18 +42,17 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_get_driver_display_name_callable(self):
-        owner, obj = _auto_resolve('get_driver_display_name')
+        owner, obj = _auto_resolve("get_driver_display_name")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_driver_display_name：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
+            f"{_MODULE} 中解析不到 get_driver_display_name：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
         assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_driver_display_name 不可调用 (owner={owner!r})')
+            f"{_MODULE}.get_driver_display_name 不可调用 (owner={owner!r})"
+        )
 
     def test_get_driver_registry_callable(self):
-        owner, obj = _auto_resolve('get_driver_registry')
+        owner, obj = _auto_resolve("get_driver_registry")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_driver_registry：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_driver_registry 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 get_driver_registry：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_driver_registry 不可调用 (owner={owner!r})"

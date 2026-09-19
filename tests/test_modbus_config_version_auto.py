@@ -42,82 +42,73 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_snapshot_device_config_callable(self):
-        owner, obj = _auto_resolve('snapshot_device_config')
+        owner, obj = _auto_resolve("snapshot_device_config")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 snapshot_device_config：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
+            f"{_MODULE} 中解析不到 snapshot_device_config：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
         assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.snapshot_device_config 不可调用 (owner={owner!r})')
+            f"{_MODULE}.snapshot_device_config 不可调用 (owner={owner!r})"
+        )
 
     def test_rollback_callable(self):
-        owner, obj = _auto_resolve('rollback')
+        owner, obj = _auto_resolve("rollback")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.rollback 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.rollback 不可调用 (owner={owner!r})"
 
     def test_list_versions_callable(self):
-        owner, obj = _auto_resolve('list_versions')
+        owner, obj = _auto_resolve("list_versions")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 list_versions：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.list_versions 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 list_versions：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.list_versions 不可调用 (owner={owner!r})"
 
     def test_get_version_callable(self):
-        owner, obj = _auto_resolve('get_version')
+        owner, obj = _auto_resolve("get_version")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_version：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_version 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_version：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_version 不可调用 (owner={owner!r})"
 
     def test_diff_versions_callable(self):
-        owner, obj = _auto_resolve('diff_versions')
+        owner, obj = _auto_resolve("diff_versions")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 diff_versions：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.diff_versions 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 diff_versions：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.diff_versions 不可调用 (owner={owner!r})"
 
     def test_export_json_callable(self):
-        owner, obj = _auto_resolve('export_json')
+        owner, obj = _auto_resolve("export_json")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 export_json：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.export_json 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 export_json：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.export_json 不可调用 (owner={owner!r})"
 
     def test_export_yaml_callable(self):
-        owner, obj = _auto_resolve('export_yaml')
+        owner, obj = _auto_resolve("export_yaml")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 export_yaml：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.export_yaml 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 export_yaml：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.export_yaml 不可调用 (owner={owner!r})"
 
     def test_import_json_callable(self):
-        owner, obj = _auto_resolve('import_json')
+        owner, obj = _auto_resolve("import_json")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 import_json：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.import_json 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 import_json：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.import_json 不可调用 (owner={owner!r})"
 
     def test_verify_integrity_callable(self):
-        owner, obj = _auto_resolve('verify_integrity')
+        owner, obj = _auto_resolve("verify_integrity")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 verify_integrity：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.verify_integrity 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 verify_integrity：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.verify_integrity 不可调用 (owner={owner!r})"
 
     def test_close_callable(self):
-        owner, obj = _auto_resolve('close')
+        owner, obj = _auto_resolve("close")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 close：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.close 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 close：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.close 不可调用 (owner={owner!r})"

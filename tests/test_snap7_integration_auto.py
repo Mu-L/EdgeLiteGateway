@@ -42,138 +42,120 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_connect_callable(self):
-        owner, obj = _auto_resolve('connect')
+        owner, obj = _auto_resolve("connect")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 connect：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.connect 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 connect：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.connect 不可调用 (owner={owner!r})"
 
     def test_disconnect_callable(self):
-        owner, obj = _auto_resolve('disconnect')
+        owner, obj = _auto_resolve("disconnect")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 disconnect：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.disconnect 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 disconnect：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.disconnect 不可调用 (owner={owner!r})"
 
     def test_destroy_callable(self):
-        owner, obj = _auto_resolve('destroy')
+        owner, obj = _auto_resolve("destroy")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 destroy：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.destroy 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 destroy：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.destroy 不可调用 (owner={owner!r})"
 
     def test_read_area_callable(self):
-        owner, obj = _auto_resolve('read_area')
+        owner, obj = _auto_resolve("read_area")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 read_area：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.read_area 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 read_area：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.read_area 不可调用 (owner={owner!r})"
 
     def test_write_area_callable(self):
-        owner, obj = _auto_resolve('write_area')
+        owner, obj = _auto_resolve("write_area")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 write_area：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.write_area 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 write_area：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.write_area 不可调用 (owner={owner!r})"
 
     def test_get_cpu_state_callable(self):
-        owner, obj = _auto_resolve('get_cpu_state')
+        owner, obj = _auto_resolve("get_cpu_state")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_cpu_state：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_cpu_state 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_cpu_state：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_cpu_state 不可调用 (owner={owner!r})"
 
     def test_read_db_float32_callable(self):
-        owner, obj = _auto_resolve('read_db_float32')
+        owner, obj = _auto_resolve("read_db_float32")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 read_db_float32：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.read_db_float32 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 read_db_float32：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.read_db_float32 不可调用 (owner={owner!r})"
 
     def test_read_db_int16_callable(self):
-        owner, obj = _auto_resolve('read_db_int16')
+        owner, obj = _auto_resolve("read_db_int16")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 read_db_int16：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.read_db_int16 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 read_db_int16：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.read_db_int16 不可调用 (owner={owner!r})"
 
     def test_read_db_uint16_callable(self):
-        owner, obj = _auto_resolve('read_db_uint16')
+        owner, obj = _auto_resolve("read_db_uint16")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 read_db_uint16：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.read_db_uint16 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 read_db_uint16：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.read_db_uint16 不可调用 (owner={owner!r})"
 
     def test_write_db_float32_callable(self):
-        owner, obj = _auto_resolve('write_db_float32')
+        owner, obj = _auto_resolve("write_db_float32")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 write_db_float32：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.write_db_float32 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 write_db_float32：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.write_db_float32 不可调用 (owner={owner!r})"
 
     def test_write_db_int16_callable(self):
-        owner, obj = _auto_resolve('write_db_int16')
+        owner, obj = _auto_resolve("write_db_int16")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 write_db_int16：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.write_db_int16 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 write_db_int16：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.write_db_int16 不可调用 (owner={owner!r})"
 
     def test_is_connected_callable(self):
-        owner, obj = _auto_resolve('is_connected')
+        owner, obj = _auto_resolve("is_connected")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 is_connected：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.is_connected 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 is_connected：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.is_connected 不可调用 (owner={owner!r})"
 
     def test_is_available_callable(self):
-        owner, obj = _auto_resolve('is_available')
+        owner, obj = _auto_resolve("is_available")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 is_available：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.is_available 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 is_available：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.is_available 不可调用 (owner={owner!r})"
 
     def test_connect_to_plc_callable(self):
-        owner, obj = _auto_resolve('connect_to_plc')
+        owner, obj = _auto_resolve("connect_to_plc")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 connect_to_plc：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.connect_to_plc 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 connect_to_plc：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.connect_to_plc 不可调用 (owner={owner!r})"
 
     def test_map_pn_to_db_callable(self):
-        owner, obj = _auto_resolve('map_pn_to_db')
+        owner, obj = _auto_resolve("map_pn_to_db")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 map_pn_to_db：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.map_pn_to_db 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 map_pn_to_db：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.map_pn_to_db 不可调用 (owner={owner!r})"
 
     def test_read_io_data_callable(self):
-        owner, obj = _auto_resolve('read_io_data')
+        owner, obj = _auto_resolve("read_io_data")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 read_io_data：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.read_io_data 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 read_io_data：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.read_io_data 不可调用 (owner={owner!r})"
 
     def test_write_io_data_callable(self):
-        owner, obj = _auto_resolve('write_io_data')
+        owner, obj = _auto_resolve("write_io_data")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 write_io_data：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.write_io_data 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 write_io_data：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.write_io_data 不可调用 (owner={owner!r})"

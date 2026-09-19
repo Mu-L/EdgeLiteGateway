@@ -42,58 +42,50 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_login_callable(self):
-        owner, obj = _auto_resolve('login')
+        owner, obj = _auto_resolve("login")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 login：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.login 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 login：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.login 不可调用 (owner={owner!r})"
 
     def test_refresh_token_callable(self):
-        owner, obj = _auto_resolve('refresh_token')
+        owner, obj = _auto_resolve("refresh_token")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 refresh_token：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.refresh_token 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 refresh_token：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.refresh_token 不可调用 (owner={owner!r})"
 
     def test_get_current_user_info_callable(self):
-        owner, obj = _auto_resolve('get_current_user_info')
+        owner, obj = _auto_resolve("get_current_user_info")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_current_user_info：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_current_user_info 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_current_user_info：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_current_user_info 不可调用 (owner={owner!r})"
 
     def test_change_password_callable(self):
-        owner, obj = _auto_resolve('change_password')
+        owner, obj = _auto_resolve("change_password")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 change_password：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.change_password 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 change_password：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.change_password 不可调用 (owner={owner!r})"
 
     def test_forgot_password_callable(self):
-        owner, obj = _auto_resolve('forgot_password')
+        owner, obj = _auto_resolve("forgot_password")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 forgot_password：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.forgot_password 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 forgot_password：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.forgot_password 不可调用 (owner={owner!r})"
 
     def test_reset_password_callable(self):
-        owner, obj = _auto_resolve('reset_password')
+        owner, obj = _auto_resolve("reset_password")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 reset_password：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.reset_password 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 reset_password：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.reset_password 不可调用 (owner={owner!r})"
 
     def test_logout_callable(self):
-        owner, obj = _auto_resolve('logout')
+        owner, obj = _auto_resolve("logout")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 logout：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.logout 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 logout：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.logout 不可调用 (owner={owner!r})"

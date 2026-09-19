@@ -42,34 +42,29 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_check_update_callable(self):
-        owner, obj = _auto_resolve('check_update')
+        owner, obj = _auto_resolve("check_update")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 check_update：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.check_update 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 check_update：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.check_update 不可调用 (owner={owner!r})"
 
     def test_download_package_callable(self):
-        owner, obj = _auto_resolve('download_package')
+        owner, obj = _auto_resolve("download_package")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 download_package：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.download_package 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 download_package：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.download_package 不可调用 (owner={owner!r})"
 
     def test_apply_update_callable(self):
-        owner, obj = _auto_resolve('apply_update')
+        owner, obj = _auto_resolve("apply_update")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 apply_update：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.apply_update 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 apply_update：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.apply_update 不可调用 (owner={owner!r})"
 
     def test_rollback_callable(self):
-        owner, obj = _auto_resolve('rollback')
+        owner, obj = _auto_resolve("rollback")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.rollback 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.rollback 不可调用 (owner={owner!r})"

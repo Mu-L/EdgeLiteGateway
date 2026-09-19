@@ -42,66 +42,57 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_save_version_callable(self):
-        owner, obj = _auto_resolve('save_version')
+        owner, obj = _auto_resolve("save_version")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 save_version：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.save_version 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 save_version：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.save_version 不可调用 (owner={owner!r})"
 
     def test_get_current_callable(self):
-        owner, obj = _auto_resolve('get_current')
+        owner, obj = _auto_resolve("get_current")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_current：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_current 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_current：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_current 不可调用 (owner={owner!r})"
 
     def test_get_versions_callable(self):
-        owner, obj = _auto_resolve('get_versions')
+        owner, obj = _auto_resolve("get_versions")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_versions：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_versions 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_versions：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_versions 不可调用 (owner={owner!r})"
 
     def test_get_version_config_callable(self):
-        owner, obj = _auto_resolve('get_version_config')
+        owner, obj = _auto_resolve("get_version_config")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_version_config：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_version_config 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_version_config：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_version_config 不可调用 (owner={owner!r})"
 
     def test_rollback_callable(self):
-        owner, obj = _auto_resolve('rollback')
+        owner, obj = _auto_resolve("rollback")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.rollback 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 rollback：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.rollback 不可调用 (owner={owner!r})"
 
     def test_get_audit_trail_callable(self):
-        owner, obj = _auto_resolve('get_audit_trail')
+        owner, obj = _auto_resolve("get_audit_trail")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_audit_trail：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_audit_trail 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_audit_trail：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_audit_trail 不可调用 (owner={owner!r})"
 
     def test_diff_versions_callable(self):
-        owner, obj = _auto_resolve('diff_versions')
+        owner, obj = _auto_resolve("diff_versions")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 diff_versions：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.diff_versions 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 diff_versions：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.diff_versions 不可调用 (owner={owner!r})"
 
     def test_stop_callable(self):
-        owner, obj = _auto_resolve('stop')
+        owner, obj = _auto_resolve("stop")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.stop 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.stop 不可调用 (owner={owner!r})"

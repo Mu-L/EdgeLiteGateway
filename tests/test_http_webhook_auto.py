@@ -42,162 +42,141 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_record_receive_callable(self):
-        owner, obj = _auto_resolve('record_receive')
+        owner, obj = _auto_resolve("record_receive")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 record_receive：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.record_receive 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 record_receive：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.record_receive 不可调用 (owner={owner!r})"
 
     def test_record_timeout_callable(self):
-        owner, obj = _auto_resolve('record_timeout')
+        owner, obj = _auto_resolve("record_timeout")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 record_timeout：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.record_timeout 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 record_timeout：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.record_timeout 不可调用 (owner={owner!r})"
 
     def test_resolve_callable(self):
-        owner, obj = _auto_resolve('resolve')
+        owner, obj = _auto_resolve("resolve")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 resolve：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.resolve 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 resolve：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.resolve 不可调用 (owner={owner!r})"
 
     def test_clear_callable(self):
-        owner, obj = _auto_resolve('clear')
+        owner, obj = _auto_resolve("clear")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 clear：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.clear 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 clear：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.clear 不可调用 (owner={owner!r})"
 
     def test_start_callable(self):
-        owner, obj = _auto_resolve('start')
+        owner, obj = _auto_resolve("start")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 start：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.start 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 start：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.start 不可调用 (owner={owner!r})"
 
     def test_stop_callable(self):
-        owner, obj = _auto_resolve('stop')
+        owner, obj = _auto_resolve("stop")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.stop 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.stop 不可调用 (owner={owner!r})"
 
     def test_add_device_callable(self):
-        owner, obj = _auto_resolve('add_device')
+        owner, obj = _auto_resolve("add_device")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 add_device：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.add_device 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 add_device：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.add_device 不可调用 (owner={owner!r})"
 
     def test_remove_device_callable(self):
-        owner, obj = _auto_resolve('remove_device')
+        owner, obj = _auto_resolve("remove_device")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 remove_device：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.remove_device 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 remove_device：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.remove_device 不可调用 (owner={owner!r})"
 
     def test_get_point_health_callable(self):
-        owner, obj = _auto_resolve('get_point_health')
+        owner, obj = _auto_resolve("get_point_health")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_point_health：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_point_health 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_point_health：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_point_health 不可调用 (owner={owner!r})"
 
     def test_get_write_audit_log_callable(self):
-        owner, obj = _auto_resolve('get_write_audit_log')
+        owner, obj = _auto_resolve("get_write_audit_log")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_write_audit_log：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_write_audit_log 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_write_audit_log：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_write_audit_log 不可调用 (owner={owner!r})"
 
     def test_read_points_callable(self):
-        owner, obj = _auto_resolve('read_points')
+        owner, obj = _auto_resolve("read_points")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 read_points：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.read_points 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 read_points：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.read_points 不可调用 (owner={owner!r})"
 
     def test_write_point_callable(self):
-        owner, obj = _auto_resolve('write_point')
+        owner, obj = _auto_resolve("write_point")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 write_point：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.write_point 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 write_point：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.write_point 不可调用 (owner={owner!r})"
 
     def test_on_data_callable(self):
-        owner, obj = _auto_resolve('on_data')
+        owner, obj = _auto_resolve("on_data")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 on_data：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.on_data 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 on_data：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.on_data 不可调用 (owner={owner!r})"
 
     def test_receive_data_callable(self):
-        owner, obj = _auto_resolve('receive_data')
+        owner, obj = _auto_resolve("receive_data")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 receive_data：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.receive_data 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 receive_data：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.receive_data 不可调用 (owner={owner!r})"
 
     def test_get_last_receive_time_callable(self):
-        owner, obj = _auto_resolve('get_last_receive_time')
+        owner, obj = _auto_resolve("get_last_receive_time")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_last_receive_time：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_last_receive_time 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_last_receive_time：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_last_receive_time 不可调用 (owner={owner!r})"
 
     def test_get_health_latency_callable(self):
-        owner, obj = _auto_resolve('get_health_latency')
+        owner, obj = _auto_resolve("get_health_latency")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_health_latency：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_health_latency 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_health_latency：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_health_latency 不可调用 (owner={owner!r})"
 
     def test_is_device_connected_callable(self):
-        owner, obj = _auto_resolve('is_device_connected')
+        owner, obj = _auto_resolve("is_device_connected")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 is_device_connected：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.is_device_connected 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 is_device_connected：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.is_device_connected 不可调用 (owner={owner!r})"
 
     def test_health_check_callable(self):
-        owner, obj = _auto_resolve('health_check')
+        owner, obj = _auto_resolve("health_check")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 health_check：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.health_check 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 health_check：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.health_check 不可调用 (owner={owner!r})"
 
     def test_get_point_stats_callable(self):
-        owner, obj = _auto_resolve('get_point_stats')
+        owner, obj = _auto_resolve("get_point_stats")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_point_stats：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_point_stats 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_point_stats：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_point_stats 不可调用 (owner={owner!r})"
 
     def test_get_health_stats_callable(self):
-        owner, obj = _auto_resolve('get_health_stats')
+        owner, obj = _auto_resolve("get_health_stats")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_health_stats：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_health_stats 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 get_health_stats：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_health_stats 不可调用 (owner={owner!r})"

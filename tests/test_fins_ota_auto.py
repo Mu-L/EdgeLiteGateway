@@ -42,42 +42,36 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_check_update_callable(self):
-        owner, obj = _auto_resolve('check_update')
+        owner, obj = _auto_resolve("check_update")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 check_update：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.check_update 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 check_update：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.check_update 不可调用 (owner={owner!r})"
 
     def test_start_ota_callable(self):
-        owner, obj = _auto_resolve('start_ota')
+        owner, obj = _auto_resolve("start_ota")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 start_ota：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.start_ota 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 start_ota：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.start_ota 不可调用 (owner={owner!r})"
 
     def test_rollback_ota_callable(self):
-        owner, obj = _auto_resolve('rollback_ota')
+        owner, obj = _auto_resolve("rollback_ota")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 rollback_ota：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.rollback_ota 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 rollback_ota：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.rollback_ota 不可调用 (owner={owner!r})"
 
     def test_get_progress_callable(self):
-        owner, obj = _auto_resolve('get_progress')
+        owner, obj = _auto_resolve("get_progress")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_progress：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_progress 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_progress：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_progress 不可调用 (owner={owner!r})"
 
     def test_get_history_callable(self):
-        owner, obj = _auto_resolve('get_history')
+        owner, obj = _auto_resolve("get_history")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_history：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_history 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 get_history：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_history 不可调用 (owner={owner!r})"

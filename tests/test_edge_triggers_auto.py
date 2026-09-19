@@ -42,26 +42,22 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_execute_callable(self):
-        owner, obj = _auto_resolve('execute')
+        owner, obj = _auto_resolve("execute")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 execute：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.execute 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 execute：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.execute 不可调用 (owner={owner!r})"
 
     def test_stop_callable(self):
-        owner, obj = _auto_resolve('stop')
+        owner, obj = _auto_resolve("stop")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.stop 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.stop 不可调用 (owner={owner!r})"
 
     def test_get_stats_callable(self):
-        owner, obj = _auto_resolve('get_stats')
+        owner, obj = _auto_resolve("get_stats")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_stats：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_stats 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 get_stats：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_stats 不可调用 (owner={owner!r})"

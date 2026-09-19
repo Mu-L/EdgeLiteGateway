@@ -1066,9 +1066,7 @@ class McDriver(DriverPlugin):
             if not m.group(2):
                 raise ValueError(f"MC address missing numeric offset: {address!r}")
             if int(m.group(2)) > self._MC_MAX_ADDR:
-                raise ValueError(
-                    f"MC address offset out of range [0-{self._MC_MAX_ADDR}]: {address!r}"
-                )
+                raise ValueError(f"MC address offset out of range [0-{self._MC_MAX_ADDR}]: {address!r}")
 
         if len(parts) > 1:
             bit_suffix = parts[1]

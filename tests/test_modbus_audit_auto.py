@@ -42,74 +42,64 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_log_write_callable(self):
-        owner, obj = _auto_resolve('log_write')
+        owner, obj = _auto_resolve("log_write")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 log_write：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.log_write 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 log_write：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.log_write 不可调用 (owner={owner!r})"
 
     def test_log_config_change_callable(self):
-        owner, obj = _auto_resolve('log_config_change')
+        owner, obj = _auto_resolve("log_config_change")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 log_config_change：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.log_config_change 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 log_config_change：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.log_config_change 不可调用 (owner={owner!r})"
 
     def test_log_failover_callable(self):
-        owner, obj = _auto_resolve('log_failover')
+        owner, obj = _auto_resolve("log_failover")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 log_failover：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.log_failover 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 log_failover：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.log_failover 不可调用 (owner={owner!r})"
 
     def test_log_reconnect_callable(self):
-        owner, obj = _auto_resolve('log_reconnect')
+        owner, obj = _auto_resolve("log_reconnect")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 log_reconnect：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.log_reconnect 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 log_reconnect：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.log_reconnect 不可调用 (owner={owner!r})"
 
     def test_get_recent_callable(self):
-        owner, obj = _auto_resolve('get_recent')
+        owner, obj = _auto_resolve("get_recent")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_recent：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_recent 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_recent：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_recent 不可调用 (owner={owner!r})"
 
     def test_get_by_device_callable(self):
-        owner, obj = _auto_resolve('get_by_device')
+        owner, obj = _auto_resolve("get_by_device")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_by_device：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_by_device 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_by_device：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_by_device 不可调用 (owner={owner!r})"
 
     def test_get_by_action_callable(self):
-        owner, obj = _auto_resolve('get_by_action')
+        owner, obj = _auto_resolve("get_by_action")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_by_action：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_by_action 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_by_action：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_by_action 不可调用 (owner={owner!r})"
 
     def test_get_stats_callable(self):
-        owner, obj = _auto_resolve('get_stats')
+        owner, obj = _auto_resolve("get_stats")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_stats：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_stats 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_stats：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_stats 不可调用 (owner={owner!r})"
 
     def test_export_csv_callable(self):
-        owner, obj = _auto_resolve('export_csv')
+        owner, obj = _auto_resolve("export_csv")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 export_csv：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.export_csv 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 export_csv：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.export_csv 不可调用 (owner={owner!r})"

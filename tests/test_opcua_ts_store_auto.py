@@ -42,58 +42,50 @@ class TestAutoSmoke:
             pytest.skip(f"import failed: {_ERR}")
 
     def test_append_callable(self):
-        owner, obj = _auto_resolve('append')
+        owner, obj = _auto_resolve("append")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 append：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.append 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 append：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.append 不可调用 (owner={owner!r})"
 
     def test_get_pending_callable(self):
-        owner, obj = _auto_resolve('get_pending')
+        owner, obj = _auto_resolve("get_pending")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 get_pending：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.get_pending 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 get_pending：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.get_pending 不可调用 (owner={owner!r})"
 
     def test_mark_synced_callable(self):
-        owner, obj = _auto_resolve('mark_synced')
+        owner, obj = _auto_resolve("mark_synced")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 mark_synced：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.mark_synced 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 mark_synced：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.mark_synced 不可调用 (owner={owner!r})"
 
     def test_cleanup_expired_callable(self):
-        owner, obj = _auto_resolve('cleanup_expired')
+        owner, obj = _auto_resolve("cleanup_expired")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 cleanup_expired：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.cleanup_expired 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 cleanup_expired：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.cleanup_expired 不可调用 (owner={owner!r})"
 
     def test_start_callable(self):
-        owner, obj = _auto_resolve('start')
+        owner, obj = _auto_resolve("start")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 start：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.start 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 start：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.start 不可调用 (owner={owner!r})"
 
     def test_stop_callable(self):
-        owner, obj = _auto_resolve('stop')
+        owner, obj = _auto_resolve("stop")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.stop 不可调用 (owner={owner!r})')
+            f"{_MODULE} 中解析不到 stop：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.stop 不可调用 (owner={owner!r})"
 
     def test_sync_now_callable(self):
-        owner, obj = _auto_resolve('sync_now')
+        owner, obj = _auto_resolve("sync_now")
         assert obj is not None, (
-            f'{_MODULE} 中解析不到 sync_now：模块属性与所有类属性表均未命中，'
-            f'请确认 API 是否已删除或改名')
-        assert callable(obj) or isinstance(obj, property), (
-            f'{_MODULE}.sync_now 不可调用 (owner={owner!r})')
-
+            f"{_MODULE} 中解析不到 sync_now：模块属性与所有类属性表均未命中，请确认 API 是否已删除或改名"
+        )
+        assert callable(obj) or isinstance(obj, property), f"{_MODULE}.sync_now 不可调用 (owner={owner!r})"
