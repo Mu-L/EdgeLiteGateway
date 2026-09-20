@@ -33,12 +33,15 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-# FIXED-SEC: 基础镜像自带 wheel 与 /install 拷贝的旧版包共存时会产生两套
-# dist-info（pip 只认其一，Trivy 扫描报另一个旧版），必须先清空同名
-# dist-info 再装单一版本：jaraco.context 5.3.0→6.1.0+（CVE-2026-23949
-# 路径穿越）、wheel 0.45.1→0.46.2+（CVE-2026-24049 提权）[2026-09-19]
-RUN rm -rf /usr/local/lib/python3.11/site-packages/wheel-*.dist-info \
+# FIXED-SEC: 消灭 jaraco.context<6.1.0 / wheel<0.46.2 的三处残留源（.ci-sim 最小复现实测）：
+# 1) 基础镜像 setuptools 将旧版 vendor 进 setuptools/_vendor/（Trivy 实报 0.45.1 的来源）→ 升级 setuptools 换新 vendor
+# 2) 旧版 jaraco.context 5.3.0 的 dist-info 目录名带点（jaraco.context-5.3.0.dist-info），
+#    新版规范化为下划线，两种命名都必须清理
+# 3) /install 拷贝与基础镜像自带包同目录共存，pip 只升级它"看见"的一套，另一套残留
+RUN pip install --no-cache-dir --upgrade "setuptools>=80.9" \
+ && rm -rf /usr/local/lib/python3.11/site-packages/wheel-*.dist-info \
             /usr/local/lib/python3.11/site-packages/jaraco_context-*.dist-info \
+            /usr/local/lib/python3.11/site-packages/jaraco.context-*.dist-info \
  && pip install --no-cache-dir "jaraco.context>=6.1.0" "wheel>=0.46.2"
 COPY --from=frontend-builder /build/dist /app/frontend/dist
 COPY configs/ configs/
