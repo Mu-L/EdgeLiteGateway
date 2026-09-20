@@ -33,9 +33,13 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-# FIXED-SEC: 升级镜像内环境包到无已知漏洞版本（Trivy 镜像扫描实测）
-# jaraco.context 5.3.0→6.1.0（CVE-2026-23949 路径穿越）、wheel 0.45.1→0.46.2（CVE-2026-24049）
-RUN pip install --no-cache-dir --upgrade "jaraco.context>=6.1.0" "wheel>=0.46.2"
+# FIXED-SEC: 基础镜像自带 wheel 与 /install 拷贝的旧版包共存时会产生两套
+# dist-info（pip 只认其一，Trivy 扫描报另一个旧版），必须先清空同名
+# dist-info 再装单一版本：jaraco.context 5.3.0→6.1.0+（CVE-2026-23949
+# 路径穿越）、wheel 0.45.1→0.46.2+（CVE-2026-24049 提权）[2026-09-19]
+RUN rm -rf /usr/local/lib/python3.11/site-packages/wheel-*.dist-info \
+            /usr/local/lib/python3.11/site-packages/jaraco_context-*.dist-info \
+ && pip install --no-cache-dir "jaraco.context>=6.1.0" "wheel>=0.46.2"
 COPY --from=frontend-builder /build/dist /app/frontend/dist
 COPY configs/ configs/
 COPY alembic/ alembic/
