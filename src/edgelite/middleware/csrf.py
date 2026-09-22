@@ -170,14 +170,33 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             # F1: 密钥不可用时 fail-closed（拒绝），绝不回退弱密钥放行
             if not secret or not _verify(secret, token, now):
                 logger.warning("CSRF token invalid/missing: path=%s method=%s", path, method)
-                return JSONResponse(
-                    status_code=403,
-                    content={
-                        "code": 403,
-                        "message": "CSRF token missing or invalid",
-                        "detail": "Provide a valid X-CSRF-Token header (obtain one via a GET request)",
-                    },
-                )
+                # FIXED: 403 响应附带 error_code + 新签发的 token（头 + 体 + Cookie），
+                # 与前端 http.ts 的自动重试契约对齐（原实现两者皆无，前端重试逻辑为死代码：
+                # 密钥轮换/重启后旧 token 失效，用户只能看到裸 403 错误而无法自愈）。
+                # 密钥不可用（fail-closed）时不签发 token，仅返回错误码，走前端正常 403 处理。
+                content: dict[str, object] = {
+                    "code": 403,
+                    "message": "CSRF token missing or invalid",
+                    "detail": "Provide a valid X-CSRF-Token header (obtain one via a GET request)",
+                }
+                headers: dict[str, str] = {}
+                fresh = _sign(secret, now + _TOKEN_TTL) if secret else ""
+                if fresh:
+                    content["error_code"] = "ERR_AUTH_CSRF_FAILED"
+                    content["csrf_token"] = fresh
+                    headers[_HEADER_NAME] = fresh
+                response = JSONResponse(status_code=403, content=content, headers=headers)
+                if fresh:
+                    response.set_cookie(
+                        _COOKIE_NAME,
+                        fresh,
+                        httponly=True,
+                        samesite="strict",
+                        secure=_get_cookie_secure(),
+                        max_age=_TOKEN_TTL,
+                        path="/",
+                    )
+                return response
 
         response = await call_next(request)
         # safe 方法响应自动签发/刷新 CSRF token（双重提交: 头 + Cookie）

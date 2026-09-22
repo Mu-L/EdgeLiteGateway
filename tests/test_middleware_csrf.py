@@ -216,6 +216,49 @@ def test_unsafe_method_with_invalid_token_returns_403(mock_config):
     assert resp.status_code == 403
 
 
+def test_csrf_403_returns_error_code_and_fresh_token(mock_config):
+    """403 响应附带 error_code + 新签发 token（体/头/Cookie），且新 token 重试即通过。
+
+    对齐前端 http.ts 的自动重试契约：error_code=ERR_AUTH_CSRF_FAILED 时从
+    x-csrf-token 响应头或 csrf_token 响应体取新 token 重试一次。
+    """
+    app = _make_app()
+    with TestClient(app) as client:
+        # 1) 携带过期/失效 token 触发 403
+        expired = _sign(_get_secret() or "", int(time.time()) - 10)
+        resp = client.post("/api/v1/echo", headers={"X-CSRF-Token": expired})
+        assert resp.status_code == 403
+        body = resp.json()
+        assert body["error_code"] == "ERR_AUTH_CSRF_FAILED"
+        fresh = body.get("csrf_token")
+        assert isinstance(fresh, str) and fresh
+        assert fresh != expired
+        # 头 + Cookie 同步下发
+        assert resp.headers.get("X-CSRF-Token") == fresh
+        assert "csrf_token=" in resp.headers.get("set-cookie", "")
+        # 新 token 可用当前密钥校验通过
+        assert _verify(_get_secret() or "", fresh, int(time.time()))
+        # 2) 用 403 中下发的新 token 重试原始请求 → 通过
+        retry = client.post("/api/v1/echo", headers={"X-CSRF-Token": fresh})
+        assert retry.status_code == 200
+
+
+def test_csrf_403_fail_closed_has_no_token_fields(monkeypatch):
+    """F1: 密钥不可用时 403 不签发 token（无 csrf_token 体字段/无响应头）。"""
+
+    def _boom():
+        raise RuntimeError("config not loaded")
+
+    monkeypatch.setattr("edgelite.config.get_config", _boom)
+    app = _make_app()
+    with TestClient(app) as client:
+        resp = client.post("/api/v1/echo", headers={"X-CSRF-Token": "x"})
+    assert resp.status_code == 403
+    body = resp.json()
+    assert "csrf_token" not in body
+    assert "X-CSRF-Token" not in resp.headers
+
+
 @pytest.mark.parametrize("path", ["/health", "/live", "/ready", "/docs", "/openapi.json", "/api/v1/auth/login"])
 def test_exempt_paths_pass_without_token(mock_config, path):
     """豁免路径 unsafe 方法也放行（探针/文档/凭证端点）。"""
