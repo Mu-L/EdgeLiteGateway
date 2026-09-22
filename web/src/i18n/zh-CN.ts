@@ -2468,6 +2468,8 @@ const zhCN: LocaleMessages = {
     deviceNameLength: '设备名称长度为1-64位',
     protocolRequired: '请选择协议',
     pointNameAddrRequired: '测点名称和地址不能为空',
+    fillRequiredFields: '请填写必填字段',
+    needAtLeastOnePoint: '至少需要定义一个测点',
     createSuccess: '设备创建成功',
     createFailed: '创建失败',
     simPointNameRequired: '测点名称不能为空',

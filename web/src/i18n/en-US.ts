@@ -2464,6 +2464,8 @@ const enUS: LocaleMessages = {
     deviceNameLength: 'Device name must be 1-64 characters',
     protocolRequired: 'Please select a protocol',
     pointNameAddrRequired: 'Point name and address cannot be empty',
+    fillRequiredFields: 'Please fill in required fields',
+    needAtLeastOnePoint: 'At least one point must be defined',
     createSuccess: 'Device created successfully',
     createFailed: 'Creation failed',
     simPointNameRequired: 'Point name is required',
