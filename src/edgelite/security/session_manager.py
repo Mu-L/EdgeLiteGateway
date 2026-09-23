@@ -82,7 +82,10 @@ def register_session(user_id: str, jti: str, expires_at: float | None = None) ->
             try:
                 _ensure_table(conn)
                 conn.execute(
-                    "INSERT OR REPLACE INTO user_sessions (user_id, jti, expires_at) VALUES (?, ?, ?)",
+                    # FIXED-JOINT: 显式提供 created_at —— alembic 建表为 created_at DATETIME NOT NULL（无默认值），
+                    # INSERT 省略该列会触发 NOT NULL 约束失败，导致会话撤销/注册静默失败
+                    "INSERT OR REPLACE INTO user_sessions (user_id, jti, expires_at, created_at) "
+                    "VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
                     (user_id, jti, exp),
                 )
                 conn.commit()
@@ -254,7 +257,9 @@ async def revoke_old_sessions(user_id: str, new_jtis: list[str]) -> None:
                 exp = time.time() + _DEFAULT_SESSION_TTL
                 for jti in new_set:
                     conn.execute(
-                        "INSERT OR REPLACE INTO user_sessions (user_id, jti, expires_at) VALUES (?, ?, ?)",
+                        # FIXED-JOINT: 同 register_session —— 显式提供 created_at，规避 NOT NULL 约束
+                        "INSERT OR REPLACE INTO user_sessions (user_id, jti, expires_at, created_at) "
+                        "VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
                         (user_id, jti, exp),
                     )
                 conn.commit()

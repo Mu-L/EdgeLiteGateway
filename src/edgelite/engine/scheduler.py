@@ -351,6 +351,27 @@ class CollectScheduler:
                 return dict(self._last_values.get(device_id, {}))
             return {k: dict(v) for k, v in self._last_values.items()}
 
+    async def get_last_collect_at(self, device_id: str) -> datetime | None:
+        """FIXED-JOINT: 返回设备最近一次实际采集完成时间（缓存新鲜度判定依据）。
+
+        此前 _last_values 只存裸值不带时间戳，服务层包装时被迫用当前时间伪装新鲜度，
+        采集停摆后页面仍显示"实时"数据，误导运维与联动控制。
+        """
+        async with self._state_lock:
+            stats = self._collect_stats.get(device_id)
+        if stats is None or not stats.last_collect_at:
+            return None
+        try:
+            return datetime.fromisoformat(stats.last_collect_at)
+        except ValueError:
+            return None
+
+    async def get_collect_interval(self, device_id: str) -> int:
+        """FIXED-JOINT: 返回设备当前生效的采集间隔（秒），无任务时返回 0。"""
+        async with self._state_lock:
+            info = self._device_info.get(device_id)
+        return int(info[2]) if info else 0
+
     async def get_device_quality_stats(self) -> dict[str, DeviceQualityStats]:
         """获取所有设备帧错误率统计"""
         async with self._state_lock:  # FIXED-P0: _device_quality_stats并发读取保护

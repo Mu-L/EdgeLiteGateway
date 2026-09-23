@@ -527,14 +527,32 @@ class DeviceService:
         if self._scheduler:
             cached = await self._scheduler.get_last_values(device_id)
             if cached:
-                # 将缓存中的原始值包装为PointValue，与驱动路径返回类型一致
+                # FIXED-JOINT: 缓存必须携带真实新鲜度。此前包装时统一盖"当前时间"+good，
+                # 采集停摆后接口仍显示实时数据。现以最近实际采集时间为准，超过
+                # 3×采集间隔未更新则降级为 uncertain，让前端/联动可感知停摆。
                 from edgelite.drivers.base import PointValue
 
                 now = datetime.now().astimezone()  # 本地时间，确保显示时间与当前时间一致
+                try:
+                    last_at = await self._scheduler.get_last_collect_at(device_id)
+                    interval = await self._scheduler.get_collect_interval(device_id)
+                except (TypeError, ValueError, AttributeError):
+                    # 调度器不可用或返回异常值时退化为无新鲜度判定
+                    last_at, interval = None, 0
+                if not isinstance(last_at, datetime):
+                    last_at = None
+                interval = interval if isinstance(interval, int) and interval > 0 else 0
+                stale_after = max((interval or 5) * 3, 15)
+                stale = (
+                    last_at is None
+                    or (now - (last_at if last_at.tzinfo else last_at.astimezone())).total_seconds() > stale_after
+                )
+                quality = "uncertain" if stale else "good"
+                ts = last_at if last_at is not None else now
                 return {
                     k: v
                     if isinstance(v, PointValue)
-                    else PointValue(value=v, quality="good", timestamp=now, source="cache")
+                    else PointValue(value=v, quality=quality, timestamp=ts, source="cache")
                     for k, v in cached.items()
                 }
 
@@ -1349,6 +1367,11 @@ class DeviceService:
                                 "Driver start timed out for device %s, skipping",
                                 device.get("device_id"),
                             )
+                            # FIXED-JOINT: 启动失败必须把状态落为 offline。原实现仅跳过，
+                            # 设备沿用库中旧的 online 状态，成为"无驱动僵尸在线"——
+                            # 设备列表显示在线但采集/读点/下发全部静默不可用。
+                            with contextlib.suppress(Exception):
+                                await self._repo.update_status(device["device_id"], "offline")
                             return
                         with contextlib.suppress(NotImplementedError):
                             await driver.add_device(
@@ -1377,6 +1400,10 @@ class DeviceService:
                         device.get("device_id", "<unknown>"),
                         e,
                     )
+                    # FIXED-JOINT: 同上——恢复失败的设备状态落为 offline，保持列表诚实
+                    if device.get("device_id"):
+                        with contextlib.suppress(Exception):
+                            await self._repo.update_status(device["device_id"], "offline")
 
         while True:
             devices, total, *_ = await self._repo.list_all(page=page, size=size)

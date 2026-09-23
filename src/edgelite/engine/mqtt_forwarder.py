@@ -849,6 +849,17 @@ class MqttForwarder:
                 # FIXED-P2: 原问题-异常被静默吞没，添加日志记录
                 logger.warning("删除已发送SQLite离线消息失败: %s", e)
 
+    def _connection_health(self) -> dict:
+        """FIXED-JOINT: 暴露北向 MQTT 连接健康状态。
+
+        此前连续失败只记日志，状态接口看不到，运维无法及时发现
+        "转发器长期离线但进程正常" 的降级运行（联调残留日志中连续失败 50+ 次仅刷日志）。
+        """
+        return {
+            "connected": bool(self._connected),
+            "consecutive_failures": int(self._consecutive_failures),
+        }
+
     def get_offline_queue_status(self) -> dict:
         """返回离线缓存队列的状态信息（启用状态、积压数量、环形缓冲统计）。"""
         ring_stats = self._ring_buffer.get_stats() if self._ring_buffer else None
@@ -860,6 +871,7 @@ class MqttForwarder:
                 "oldest_timestamp": None,
                 "db_size_bytes": 0,
                 "ring_buffer": ring_stats,
+                **self._connection_health(),
             }
         try:
             pending = self._get_pending_count()
@@ -874,6 +886,7 @@ class MqttForwarder:
                 "oldest_timestamp": oldest,
                 "db_size_bytes": db_size,
                 "ring_buffer": ring_stats,
+                **self._connection_health(),
             }
         except Exception as e:
             logger.error("获取离线队列状态失败: %s", e)
