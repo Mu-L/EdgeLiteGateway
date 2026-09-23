@@ -516,7 +516,7 @@ class AllenBradleyDriver(DriverPlugin):
             try:
                 # 方法1: 尝试读取 @cpu 特殊标签（CIP Identity）
                 resp = self._client.Read("@cpu")
-                if resp.Status == 0:
+                if self._cip_status_is_ok(resp.Status):
                     return True
             except AttributeError:
                 return False  # client is None, not a connection issue  # FIXED-P2: 区分AttributeError和其他异常，避免None client误触发重连
@@ -643,8 +643,27 @@ class AllenBradleyDriver(DriverPlugin):
         jitter = base * self._RETRY_JITTER_FACTOR
         return base + random.uniform(-jitter, jitter)
 
-    def _parse_cip_status(self, status: int) -> str:
+    def _parse_cip_status(self, status: Any) -> str:
+        # FIXED-P0: pylogix 的 Response.Status 为字符串（成功时为 'Success'），不能按 int 做 :02X 格式化
+        if isinstance(status, str):
+            return status if status.strip() else "ERR_CIP_UNKNOWN"
         return CIP_STATUS_MAP.get(status, f"ERR_CIP_UNKNOWN_0x{status:02X}")
+
+    def _cip_status_is_ok(self, status: Any) -> bool:
+        # FIXED-P0: 归一化成功判定——pylogix str 'Success'/空串视为成功，数值 0 视为成功
+        if isinstance(status, str):
+            return status.strip().lower() in ("success", "ok", "")
+        if status is None:
+            return True
+        return status == 0
+
+    def _cip_status_display(self, status: Any) -> str:
+        if isinstance(status, str):
+            return status
+        try:
+            return f"0x{status:02X}"
+        except (TypeError, ValueError):
+            return str(status)
 
     def _record_point_success(self, point: str, latency_ms: float) -> None:
         # FIXED-P2: 容量超限时淘汰最旧条目
@@ -1507,11 +1526,11 @@ class AllenBradleyDriver(DriverPlugin):
         if resp is None:
             return None
         status = getattr(resp, "Status", None) or getattr(resp, "status", None) or 0
-        if status != 0:
+        if not self._cip_status_is_ok(status):
             cip_err = self._parse_cip_status(status)
             if point:
                 self._record_point_failure(point, cip_err)  # #[AUDIT-FIX] W9: 传入 cip_err 用于错误分布统计
-                self._log_error("", cip_err, f"point={point} cip_status=0x{status:02X}")
+                self._log_error("", cip_err, f"point={point} cip_status={self._cip_status_display(status)}")
             return None
         if not self._validate_cip_data_length(resp, point):
             if point:
@@ -1640,7 +1659,7 @@ class AllenBradleyDriver(DriverPlugin):
                     else:
                         raise
                 status = getattr(response, "Status", 1)
-                if status == 0:
+                if self._cip_status_is_ok(status):
                     verified = await self._write_verify(point, value)
                     if not verified:
                         self._log_error(device_id, "ERR_AB_WRITE_VERIFY_FAILED", f"point={point}")
@@ -1656,11 +1675,11 @@ class AllenBradleyDriver(DriverPlugin):
                 else:
                     cip_err = self._parse_cip_status(status)
                     self._log_error(
-                        device_id, "ERR_AB_WRITE_FAILED", f"point={point} cip={cip_err} status=0x{status:02X}"
+                        device_id, "ERR_AB_WRITE_FAILED", f"point={point} cip={cip_err} status={self._cip_status_display(status)}"
                     )
                     self._record_write_audit(device_id, point, old_value, value, False, cip_err)
                     self._record_write_failure(device_id)
-                    record_packet("rx", "ab", device_id, f"CIP Write Response: Status=0x{status:02X}")
+                    record_packet("rx", "ab", device_id, f"CIP Write Response: Status={self._cip_status_display(status)}")
                     return False
             except asyncio.CancelledError:
                 raise
@@ -1720,7 +1739,7 @@ class AllenBradleyDriver(DriverPlugin):
                     if i < len(response):
                         item = response[i]
                         status = getattr(item, "Status", 1)
-                        ok = status == 0
+                        ok = self._cip_status_is_ok(status)
                         result[point] = ok
                         if ok:
                             self._record_write_success(device_id)
@@ -1732,7 +1751,7 @@ class AllenBradleyDriver(DriverPlugin):
                     else:
                         result[point] = False
             else:
-                ok = getattr(response, "Status", 1) == 0
+                ok = self._cip_status_is_ok(getattr(response, "Status", 1))
                 for point in tags:
                     result[point] = ok
                 if ok:
@@ -1754,7 +1773,7 @@ class AllenBradleyDriver(DriverPlugin):
                             return False
                         resp = await self._run_in_thread(self._sync_write_tag, point, value)
                         status = getattr(resp, "Status", 1)
-                        if status == 0:
+                        if self._cip_status_is_ok(status):
                             verified = await self._write_verify(point, value)
                             return verified
                         cip_err = self._parse_cip_status(status)
@@ -2006,7 +2025,7 @@ class AllenBradleyDriver(DriverPlugin):
                         dev_port = int(dev_config.get("port", target_port))
                         dev_slot = int(dev_config.get("slot", slot))
                         try:
-                            new_dev_client = PLC(ip=dev_ip, port=dev_port, slot=dev_slot)
+                            new_dev_client = PLC(ip_address=dev_ip, port=dev_port, slot=dev_slot)
                             if hasattr(new_dev_client, "SocketTimeout"):
                                 new_dev_client.SocketTimeout = self._connection_timeout
                             self._device_clients[did] = new_dev_client
@@ -2042,7 +2061,7 @@ class AllenBradleyDriver(DriverPlugin):
 
             primary_port = int(self._config.get("port", 44818))
             primary_slot = int(self._config.get("slot", 0))
-            new_client = PLC(ip=self._primary_ip, port=primary_port, slot=primary_slot)
+            new_client = PLC(ip_address=self._primary_ip, port=primary_port, slot=primary_slot)
             if hasattr(new_client, "SocketTimeout"):
                 new_client.SocketTimeout = self._connection_timeout
             # 验证新连接可用性
@@ -2051,7 +2070,7 @@ class AllenBradleyDriver(DriverPlugin):
                 resp = await self._run_in_thread(
                     new_client.Read, "@cpu", timeout=5.0
                 )  # FIXED-P2: 同步Read移入线程池，避免阻塞事件循环
-                ping_ok = getattr(resp, "Status", None) == 0
+                ping_ok = self._cip_status_is_ok(getattr(resp, "Status", None))
             except Exception:
                 ping_ok = False
             if not ping_ok:
@@ -2108,11 +2127,11 @@ class AllenBradleyDriver(DriverPlugin):
 
                     probe_port = int(self._config.get("port", 44818))
                     probe_slot = int(self._config.get("slot", 0))
-                    probe_client = PLC(ip=self._primary_ip, port=probe_port, slot=probe_slot)
+                    probe_client = PLC(ip_address=self._primary_ip, port=probe_port, slot=probe_slot)
                     try:
                         default_tag = self._config.get("default_tag", self._DEFAULT_TAG)
                         resp = await asyncio.wait_for(self._run_in_thread(probe_client.Read, default_tag), timeout=10.0)
-                        if getattr(resp, "Status", None) == 0:
+                        if self._cip_status_is_ok(getattr(resp, "Status", None)):
                             await self._try_revert_primary(
                                 next(iter(self._devices), "")
                             )  # FIXED-P1: _try_revert_primary改为async，需await
@@ -2405,7 +2424,7 @@ class AllenBradleyDriver(DriverPlugin):
                             logger.warning(
                                 "[ab] add_device failed: %s", e
                             )  # FIXED-P2: 原问题-异常被静默吞没，添加日志记录
-                dev_client = PLC(ip=dev_ip, port=dev_port, slot=dev_slot)
+                dev_client = PLC(ip_address=dev_ip, port=dev_port, slot=dev_slot)
                 if hasattr(dev_client, "SocketTimeout"):
                     dev_client.SocketTimeout = self._connection_timeout if hasattr(self, "_connection_timeout") else 5.0
                 try:  # FIXED-P0: 客户端注册异常时关闭新客户端防止泄漏
@@ -2465,7 +2484,7 @@ class AllenBradleyDriver(DriverPlugin):
         try:
             # 读取项目名称
             response = await self._run_in_thread(self._sync_read_tag, "ProgramName")
-            project_name = response.Value if response.Status == 0 else "Unknown"
+            project_name = response.Value if self._cip_status_is_ok(response.Status) else "Unknown"
         except asyncio.CancelledError:
             raise
         except Exception as e:
@@ -2534,7 +2553,7 @@ class AllenBradleyDriver(DriverPlugin):
             try:
                 tag_path = f"Program:{prog}.ProgramName"
                 resp = await self._run_in_thread(self._sync_read_tag, tag_path)
-                if resp.Status == 0:
+                if self._cip_status_is_ok(resp.Status):
                     found.append(prog)
             except asyncio.CancelledError:
                 raise
@@ -2739,7 +2758,7 @@ class AllenBradleyDriver(DriverPlugin):
                 self._run_in_thread(self._sync_read_tag, array_tag),
                 timeout=self._browse_timeout,
             )
-            if resp.Status == 0 and resp.Value is not None:
+            if self._cip_status_is_ok(resp.Status) and resp.Value is not None:
                 # 返回单个值表示请求成功
                 results.append({"index": 0, "value": resp.Value})
         except TimeoutError:
@@ -2820,7 +2839,7 @@ class AllenBradleyDriver(DriverPlugin):
                     try:
                         resp = await self._run_in_thread(self._sync_read_tag, default_tag)
                         status = getattr(resp, "Status", None)
-                        connected = status == 0
+                        connected = self._cip_status_is_ok(status)
                     except Exception:
                         connected = False
 
@@ -2837,7 +2856,7 @@ class AllenBradleyDriver(DriverPlugin):
                         try:
                             resp = await self._run_in_thread(self._sync_read_tag, default_tag)
                             status = getattr(resp, "Status", None)
-                            connected = status == 0
+                            connected = self._cip_status_is_ok(status)
                         except Exception:
                             connected = False
 
@@ -2878,7 +2897,7 @@ class AllenBradleyDriver(DriverPlugin):
             tag = self._config.get("default_tag", self._DEFAULT_TAG)
             resp = await self._run_in_thread(self._sync_read_tag, tag)
             status = getattr(resp, "Status", 1)
-            return status == 0
+            return self._cip_status_is_ok(status)
         except asyncio.CancelledError:
             raise
         except Exception:

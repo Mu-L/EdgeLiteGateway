@@ -44,6 +44,7 @@ from edgelite.drivers.modbus_base import (
     _detect_slave_kwarg_name,
     _parse_modbus_exception,
     _set_client_slave_id,
+    normalize_modbus_point_def,
 )
 from edgelite.drivers.modbus_base import (
     _read_kwargs as _read_kwargs_base,
@@ -959,7 +960,8 @@ class ModbusTcpDriver(DriverPlugin):
             for point_name in points:
                 pt_def = next((p for p in device_points if p.get("name") == point_name), None)
                 if pt_def is not None:
-                    pt_map[point_name] = pt_def
+                    # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5），否则 int() 解析失败
+                    pt_map[point_name] = normalize_modbus_point_def(pt_def)
 
             if not pt_map:
                 return {}
@@ -1502,8 +1504,11 @@ class ModbusTcpDriver(DriverPlugin):
             if pt_def is None:
                 return False
 
+            # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5）
+            pt_def = normalize_modbus_point_def(pt_def)
             address = int(pt_def.get("address", 0))
             data_type = pt_def.get("data_type", "float32")
+            reg_type = pt_def.get("register_type", "holding")
             clamp = pt_def.get("clamp", config.get("clamp"))
             old_value = self._last_values.get((device_id, point))
 
@@ -1737,6 +1742,8 @@ class ModbusTcpDriver(DriverPlugin):
                         "write rate limited",
                     )
                     continue
+                # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5）
+                pt_def = normalize_modbus_point_def(pt_def)
                 data_type = pt_def.get("data_type", "float32")
                 address = int(pt_def.get("address", 0))
                 if data_type == "bool":

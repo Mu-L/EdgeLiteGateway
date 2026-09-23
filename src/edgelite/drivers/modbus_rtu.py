@@ -56,6 +56,7 @@ from edgelite.drivers.modbus_base import (
     _detect_slave_kwarg_name,
     _parse_modbus_exception,
     _set_client_slave_id,
+    normalize_modbus_point_def,
 )
 from edgelite.drivers.modbus_base import (
     _read_kwargs as _read_kwargs_base,
@@ -972,6 +973,9 @@ class ModbusRtuDriver(DriverPlugin):
         bit_points: dict[str, dict] = {}
         reg_points: dict[str, dict] = {}
         for name, pt_def in pt_map.items():
+            # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5），否则 int() 解析失败
+            pt_def = normalize_modbus_point_def(pt_def)
+            pt_map[name] = pt_def
             reg_type = pt_def.get("register_type", "holding")
             if reg_type in ("coil", "discrete"):
                 bit_points[name] = pt_def
@@ -1452,6 +1456,8 @@ class ModbusRtuDriver(DriverPlugin):
         if pt_def is None:
             return False
 
+        # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5）
+        pt_def = normalize_modbus_point_def(pt_def)
         address = int(pt_def.get("address", 0))
         # 协议边界校验: Modbus 寄存器地址有效范围为 0-65535
         if not 0 <= address <= 65535:

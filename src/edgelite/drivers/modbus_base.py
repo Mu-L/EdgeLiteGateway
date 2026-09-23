@@ -106,6 +106,62 @@ def _read_kwargs(count: int, slave_id: int, allow_broadcast: bool = False) -> di
     return kwargs
 
 
+# FIXED-P0: 支持工业前缀地址记法（ProtoForge/SCADA/组态软件常用）
+# HR/H=Holding Register, IR/I=Input Register, C/CO/COIL=Coil, DI/DIS=Discrete Input
+_MODBUS_ADDR_PREFIXES: list[tuple[str, str]] = [
+    ("COIL", "coil"),
+    ("DISCRETE", "discrete"),
+    ("DIS", "discrete"),
+    ("HR", "holding"),
+    ("IR", "input"),
+    ("CO", "coil"),
+    ("DI", "discrete"),
+    ("H", "holding"),
+    ("C", "coil"),
+    ("I", "input"),
+]
+
+
+def parse_modbus_address(raw: Any) -> tuple[str | None, int | None]:
+    """解析 Modbus 点地址，支持工业前缀记法。
+
+    返回 (register_type, address)；register_type 为 None 表示纯数字地址
+    （由调用方按 register_type 字段/data_type 推断，保持既有行为不变）。
+    无法解析时返回 (None, None)。
+    """
+    if raw is None:
+        return None, None
+    s = str(raw).strip().upper().replace(" ", "")
+    if not s:
+        return None, None
+    if s.isdigit():
+        # FIXED: 纯数字地址不做 4x/3x 五位编址推断，保持既有 zero-based 语义，
+        # 避免破坏存量设备配置（如 100/102/65535）
+        return None, int(s)
+    for prefix, reg_type in _MODBUS_ADDR_PREFIXES:
+        if s.startswith(prefix):
+            tail = s[len(prefix):]
+            if tail.isdigit():
+                return reg_type, int(tail)
+            return None, None
+    return None, None
+
+
+def normalize_modbus_point_def(pt_def: dict) -> dict:
+    """归一化测点定义中的工业前缀地址（如 HR100/C0/IR10/DI5）。
+
+    解析成功时返回带数字 address 与 register_type 的新副本；
+    解析失败或纯数字地址时原样返回，行为与旧版完全兼容。
+    """
+    reg_type, addr = parse_modbus_address(pt_def.get("address"))
+    if reg_type is None or addr is None:
+        return pt_def
+    out = dict(pt_def)
+    out["address"] = addr
+    out["register_type"] = reg_type
+    return out
+
+
 def _parse_modbus_exception(result: Any) -> str | None:
     """解析Modbus错误响应中的异常码，返回异常码描述
 

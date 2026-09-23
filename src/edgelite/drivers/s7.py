@@ -856,18 +856,23 @@ class S7Driver(DriverPlugin):
         device = self._devices.get(device_id, {})
         device_points = device.get("points", {})
         addr_to_name = {}
+        addr_to_dtype: dict[str, str] = {}
         read_addrs = []
         for name in points:
             p = device_points.get(name, {})
             addr = p.get("address", name)  # Fall back to name if address not found
             addr_to_name[addr] = name
+            # FIXED-P0: 传点的 data_type 供解码优先使用（float32 位模式问题）
+            dt = p.get("data_type")
+            if dt:
+                addr_to_dtype[addr] = dt
             read_addrs.append(addr)
 
         try:
             async with self._lock:
                 record_packet("tx", "s7", device_id, f"S7 Read: {read_addrs}")
                 values = await asyncio.wait_for(
-                    self._run_in_s7_thread_async(self._read_points_batch, read_addrs),
+                    self._run_in_s7_thread_async(self._read_points_batch, read_addrs, None, addr_to_dtype),
                     timeout=self._READ_TIMEOUT,
                 )
                 # Map results back from addresses to point names
@@ -900,7 +905,7 @@ class S7Driver(DriverPlugin):
                 try:
                     async with self._lock:
                         values = await asyncio.wait_for(
-                            self._run_in_s7_thread_async(self._read_points_batch, read_addrs, segment_bytes),
+                            self._run_in_s7_thread_async(self._read_points_batch, read_addrs, segment_bytes, addr_to_dtype),
                             timeout=min(self._READ_TIMEOUT, remaining_timeout),
                         )
                         result = {addr_to_name.get(k, k): v for k, v in values.items()}
@@ -1097,7 +1102,8 @@ class S7Driver(DriverPlugin):
 
         return result
 
-    def _read_points_batch(self, addresses: list[str], max_segment_bytes: int | None = None) -> dict[str, Any]:
+    def _read_points_batch(self, addresses: list[str], max_segment_bytes: int | None = None,
+                           data_types: dict[str, str] | None = None) -> dict[str, Any]:
         result: dict[str, Any] = {}
         if not addresses:
             return result
@@ -1115,6 +1121,7 @@ class S7Driver(DriverPlugin):
         if effective_max <= 0:  # FIXED-P2: PDU大小异常时使用默认值，防止传0或负数给snap7
             logger.warning("[s7] PDU size too small (%d), using default 240", self._pdu_size)
             effective_max = 240 - 12
+        dtype_map = data_types or {}
 
         if self._config.get("optimized_db", True):
             try:
@@ -1124,7 +1131,9 @@ class S7Driver(DriverPlugin):
                         data = self._sync_db_read(db_number, start_offset, total_bytes)
                         for addr, rel_offset, size, type_char, bit_offset in items:
                             try:
-                                result[addr] = self._extract_value(data, rel_offset, size, type_char, bit_offset)
+                                result[addr] = self._extract_value(
+                                    data, rel_offset, size, type_char, bit_offset, dtype_map.get(addr)
+                                )
                             except Exception as e:
                                 logger.warning("[s7] code=DECODE_ERROR msg=Extract value failed %s - %s", addr, e)
                                 result[addr] = _bad_pv(S7DriverErrors.DECODE_FAILED)
@@ -1143,7 +1152,7 @@ class S7Driver(DriverPlugin):
                 logger.warning("[s7] optimize_db_reads failed, fallback to per-point: %s", e, exc_info=True)
                 for addr in addresses:
                     try:
-                        result[addr] = self._read_point(addr)
+                        result[addr] = self._read_point(addr, dtype_map.get(addr))
                     except Exception as e:
                         logger.warning("[s7] code=READ_ERROR msg=Point read failed %s - %s", addr, e)
                         result[addr] = _bad_pv(S7DriverErrors.READ_FAILED)
@@ -1151,7 +1160,7 @@ class S7Driver(DriverPlugin):
         else:
             for addr in addresses:
                 try:
-                    result[addr] = self._read_point(addr)
+                    result[addr] = self._read_point(addr, dtype_map.get(addr))
                 except Exception as e:
                     logger.warning("[s7] code=READ_ERROR msg=Point read failed %s - %s", addr, e)
                     result[addr] = _bad_pv(S7DriverErrors.READ_FAILED)
@@ -1238,7 +1247,8 @@ class S7Driver(DriverPlugin):
         return segments
 
     @staticmethod
-    def _extract_value(data: bytearray, offset: int, size: int, type_char: str, bit_offset: int) -> Any:
+    def _extract_value(data: bytearray, offset: int, size: int, type_char: str, bit_offset: int,
+                       data_type: str | None = None) -> Any:
         import struct
 
         if not 0 <= bit_offset <= 7:
@@ -1255,6 +1265,14 @@ class S7Driver(DriverPlugin):
         elif type_char == "W":
             return int.from_bytes(data[offset : offset + 2], byteorder="big", signed=True)
         elif type_char == "D":
+            # FIXED-P0: 地址记法 D(DWORD) 决定读取长度，但值解释应尊重点定义的 data_type——
+            # 点 data_type=float32/real 且地址为 D 区(4字节)时按大端 float 解码，
+            # 否则 float 12.5 的字节 0x41460000 会被解码为整数 1095237632
+            if data_type and data_type.lower() in ("float32", "real", "float", "float64", "lreal") and size == 4:
+                val = struct.unpack(">f", data[offset : offset + 4])[0]
+                if math.isnan(val) or math.isinf(val):
+                    raise ValueError(f"NaN/Inf detected: {val}")
+                return val
             return int.from_bytes(data[offset : offset + 4], byteorder="big", signed=True)
         elif type_char == "R":
             val = struct.unpack(">f", data[offset : offset + 4])[0]
@@ -1264,7 +1282,7 @@ class S7Driver(DriverPlugin):
         else:
             raise ValueError(f"Unsupported S7 data type: {type_char}")
 
-    def _read_point(self, address: str) -> Any:
+    def _read_point(self, address: str, data_type: str | None = None) -> Any:
         """同步读取单个测点（在线程池中执行）"""
         parts = address.split(".")
         if len(parts) < 2 or not parts[0].startswith("DB"):
@@ -1314,6 +1332,14 @@ class S7Driver(DriverPlugin):
             # FIXED-P2: 验证返回数据长度，防止截断数据导致解析异常
             if len(data) < 4:
                 raise ValueError(f"Insufficient data for {address}: need 4, got {len(data)}")
+            # FIXED-P0: 与 _extract_value 一致——data_type=float32/real 时按大端 float 解码
+            if data_type and data_type.lower() in ("float32", "real", "float", "float64", "lreal"):
+                import struct
+
+                val = struct.unpack(">f", data)[0]
+                if math.isnan(val) or math.isinf(val):
+                    raise ValueError(f"NaN/Inf detected: {val}")
+                return val
             return int.from_bytes(data, byteorder="big", signed=True)
         elif type_char == "R":
             data = self._sync_db_read(db_number, byte_offset, 4)

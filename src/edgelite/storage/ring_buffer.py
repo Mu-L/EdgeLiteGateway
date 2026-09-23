@@ -44,6 +44,35 @@ class RingBuffer:
         # PERF: 维护 pending/syncing 增量计数器，避免 get_stats() 的 O(2n) 全量遍历
         self._pending_count = 0
         self._syncing_count = 0
+        # FIXED-P0: 水位告警防抖——高频写入时若持续超水位，原实现每条记录都打日志压垮事件循环与磁盘；
+        # 改为同级别60秒最多告警一次，级别升级立即告警
+        self._watermark_log_interval = 60.0
+        self._last_watermark_log = 0.0
+        self._last_watermark_level = ""
+
+    def _log_watermark(self, usage: float) -> None:
+        """水位告警（带防抖）：同级别60秒一次，级别升级立即告警"""
+        now = time.monotonic()
+        if usage >= self._critical_watermark:
+            level, code = "critical", "CRITICAL_WATERMARK"
+        elif usage >= self._high_watermark:
+            level, code = "high", "HIGH_WATERMARK"
+        else:
+            level, code = "", ""
+            self._last_watermark_level = ""
+            self._last_watermark_log = 0.0
+            return
+        if level == self._last_watermark_level and (now - self._last_watermark_log) < self._watermark_log_interval:
+            return
+        self._last_watermark_level = level
+        self._last_watermark_log = now
+        logger.warning(
+            "[ring_buffer] code=%s msg=Usage %.1f%% (%d/%d)",
+            code,
+            usage * 100,
+            len(self._buffer),
+            self._capacity,
+        )
 
     async def put(self, record: dict) -> bool:
         """添加记录到缓冲区。缓冲区满时自动覆盖最旧数据并告警。"""
@@ -83,20 +112,8 @@ class RingBuffer:
                 self._pending_count += 1
 
                 usage = len(self._buffer) / self._capacity
-                if usage >= self._critical_watermark:
-                    logger.warning(
-                        "[ring_buffer] code=CRITICAL_WATERMARK msg=Usage %.1f%% (%d/%d)",
-                        usage * 100,
-                        len(self._buffer),
-                        self._capacity,
-                    )
-                elif usage >= self._high_watermark:
-                    logger.warning(
-                        "[ring_buffer] code=HIGH_WATERMARK msg=Usage %.1f%% (%d/%d)",
-                        usage * 100,
-                        len(self._buffer),
-                        self._capacity,
-                    )
+                if usage >= self._critical_watermark or usage >= self._high_watermark:
+                    self._log_watermark(usage)
                 return True
 
         return await asyncio.to_thread(_put_sync)
@@ -247,13 +264,8 @@ class RingBuffer:
             self._pending_count += 1
 
             usage = len(self._buffer) / self._capacity
-            if usage >= self._critical_watermark:
-                logger.warning(
-                    "[ring_buffer] code=CRITICAL_WATERMARK msg=Usage %.1f%% (%d/%d)",
-                    usage * 100,
-                    len(self._buffer),
-                    self._capacity,
-                )
+            if usage >= self._critical_watermark or usage >= self._high_watermark:
+                self._log_watermark(usage)
             return True
 
     def get_stats(self) -> dict:
