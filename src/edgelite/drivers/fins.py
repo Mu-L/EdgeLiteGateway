@@ -91,7 +91,9 @@ _AREA_MAP = {
 }
 
 _ICF_ROUTED = 0x80
-_ICF_DIRECT = 0x00
+# FIXED-JOINT: FINS ICF bit7=1 表示"要求响应"。原值 0x00 表示无需响应，
+# 真实 PLC 收到后不回包（联调台架服务器较宽松才没有暴露）。与握手帧 0x80 保持一致。
+_ICF_DIRECT = 0x80
 
 _DTYPE_MAP = {
     1: "b",
@@ -465,6 +467,11 @@ class OmronFinsDriver(DriverPlugin):
         self._config: dict = {}
         self._lock = asyncio.Lock()
         self._client_lock = threading.RLock()  # FIXED-P1: 改为可重入锁，防止嵌套调用死锁
+        # FIXED-JOINT: FINS/TCP 是严格一问一答协议。direct 读、库 fallback 读、写入
+        # 并发使用同一条 socket 时，请求/响应字节流会交错，导致帧解析错位
+        # （联调实测：Invalid FINS TCP response header 死循环 + 静默脏数据）。
+        # 所有 socket 事务必须持有该锁串行执行。
+        self._fins_txn_lock = threading.Lock()
         self._async_client_lock = asyncio.Lock()
         self._in_flight_requests: int = 0
         self._in_flight_lock = threading.Lock()
@@ -1085,6 +1092,39 @@ class OmronFinsDriver(DriverPlugin):
         wrapped_execute._fins_retrans_wrapped = True  # type: ignore[attr-defined]
         client.execute_fins_command_frame = wrapped_execute
 
+    @staticmethod
+    def _drain_socket_buffer(sock, timeout: float = 2.0) -> int:
+        """FIXED-JOINT: 非阻塞排空 socket 接收缓冲中的残留字节，返回丢弃的字节数。
+
+        fins 库的 node_address_data_send/tcp_send_command 以单次 recv 读取响应，
+        TCP 分段到达时会留下残字节，使后续按帧长度精确读取的解析整体错位。
+        """
+        import select
+
+        discarded = 0
+        deadline = time.monotonic() + timeout
+        sock.setblocking(False)
+        try:
+            while time.monotonic() < deadline:
+                try:
+                    ready, _, _ = select.select([sock], [], [], 0.05)
+                except (OSError, ValueError):
+                    break
+                if not ready:
+                    break
+                try:
+                    chunk = sock.recv(4096)
+                except (BlockingIOError, InterruptedError):
+                    break
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                discarded += len(chunk)
+        finally:
+            sock.setblocking(True)
+        return discarded
+
     async def _do_connect(self, ip: str, port: int) -> None:
         transport = self._config.get("transport", "tcp").lower()
         if transport == "udp":
@@ -1106,6 +1146,15 @@ class OmronFinsDriver(DriverPlugin):
             except Exception as e:
                 logger.warning("[fins] do_connect failed: %s", e)  # FIXED-P2: 原问题-异常被静默吞没，添加日志记录
             raise
+        if transport == "tcp":
+            # FIXED-JOINT: fins 库 connect() 内部的 node_address_data_send 用单次 recv
+            # 读响应，TCP 分段到达时会留下残字节；残字节使后续精确分帧解析错位，
+            # 触发 "Invalid FINS TCP response header" 死循环（联调实测）。
+            # 连接建立后立即以非阻塞方式排空接收缓冲，保证从干净流开始。
+            try:
+                await self._run_in_thread(self._drain_socket_buffer, new_client.fins_socket, timeout=5.0)
+            except Exception as e:
+                logger.debug("[fins] post-connect drain failed: %s", e)
         # FINS-P1: UDP 模式注入应用层重传 (丢包自动重传)
         if transport == "udp":
             self._wrap_udp_retransmission(new_client)
@@ -1531,6 +1580,21 @@ class OmronFinsDriver(DriverPlugin):
             self._set_fins_state(FinsConnState.DISCONNECTED, self._active_ip, "driver stopped")
             logger.info("FINS驱动已停止")
 
+    def _resolve_point_address(self, device_id: str, name: str) -> str:
+        """FIXED-JOINT: 将测点 NAME 解析为 FINS 地址（如 "w0" -> "D0,w"）。
+
+        服务层传入测点名，协议层需要配置地址；未注册或无地址时回退原名，
+        兼容 name==address 的历史配置。
+        """
+        device = self._devices.get(device_id)
+        if device:
+            pt = device.get("points", {}).get(name)
+            if isinstance(pt, dict):
+                addr = pt.get("address")
+                if addr:
+                    return str(addr)
+        return name
+
     async def read_points(self, device_id: str, points: list[str]) -> dict[str, Any]:
         quality: Any = self.get_connection_quality(device_id)
         if quality < 60:
@@ -1942,11 +2006,15 @@ class OmronFinsDriver(DriverPlugin):
                     ]
                 )
             else:
+                # FIXED-JOINT: FINS 内存区读的地址字段是 字地址(2B大端)+位号(1B)。
+                # 原实现按 24 位大端整数编码，D10 被编成 [0,0,10]——服务端/真实 PLC
+                # 解析为 "D 字地址 0、位号 10"，实际读取的是 D0 的位区域（联调实测：
+                # 采集值与源端内存完全对不上）。字访问时位号必须为 0。
                 offset_bytes = bytes(
                     [
-                        (offset >> 16) & 0xFF,
                         (offset >> 8) & 0xFF,
                         offset & 0xFF,
+                        0x00,
                     ]
                 )
 
@@ -1984,7 +2052,9 @@ class OmronFinsDriver(DriverPlugin):
                     client = self._client
                 if client is None:
                     return PointValue(value=None, quality="bad", timestamp=datetime.now(UTC))
-                return client.read(area, offset, data_type=data_type, number_of_values=1)
+                # FIXED-JOINT: 库 fallback 读同样持事务锁，防止与 direct 读交错
+                with self._fins_txn_lock:
+                    return client.read(area, offset, data_type=data_type, number_of_values=1)
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -2031,6 +2101,11 @@ class OmronFinsDriver(DriverPlugin):
             if not sock:
                 raise RuntimeError("FINS socket not available")
             self._socket_in_use = True
+        # FIXED-JOINT: 事务级串行化——防止并发事务的请求/响应在 socket 上交错
+        with self._fins_txn_lock:
+            return self._fins_tcp_request_locked(sock, fins_command, data_type)
+
+    def _fins_tcp_request_locked(self, sock, fins_command: bytes, data_type: str = "w") -> Any:
         tcp_frame = b"FINS" + struct.pack(">I", len(fins_command)) + fins_command
 
         try:
@@ -2047,6 +2122,13 @@ class OmronFinsDriver(DriverPlugin):
                     raise RuntimeError("FINS connection closed during header read")
                 header.extend(chunk)
             if header[:4] != b"FINS":
+                # FIXED-JOINT: 响应魔数校验失败说明 TCP 字节流已错位（半包/粘包残留），
+                # 继续在同一条连接上读写只会静默解析出"看似合法的垃圾值"。
+                # 立即关闭 socket，让连接质量判定与后台重连机制重建干净连接。
+                try:
+                    sock.close()
+                except Exception:
+                    pass
                 raise RuntimeError(f"Invalid FINS TCP response header: {header[:4]}")
             data_len = struct.unpack(">I", header[4:8])[0]
             if data_len < 12:
@@ -2074,9 +2156,18 @@ class OmronFinsDriver(DriverPlugin):
                 response.extend(chunk)
 
             if len(response) < 14:
+                # FIXED-JOINT: 响应残缺同样意味着流错位，关闭 socket 触发连接重建
+                try:
+                    sock.close()
+                except Exception:
+                    pass
                 raise RuntimeError(f"FINS response too short: {len(response)}")
 
             if len(response) < data_len:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
                 raise RuntimeError(f"FINS response incomplete: expected {data_len} bytes, got {len(response)}")
 
             err_code = struct.unpack(">H", response[12:14])[0] if len(response) >= 14 else 0
@@ -2090,6 +2181,13 @@ class OmronFinsDriver(DriverPlugin):
                 exc_class = FinsWriteError if is_write else FinsResponseError
                 default_code = FinsDriverErrors.WRITE_FAILED if is_write else FinsDriverErrors.READ_FAILED
                 raise exc_class(err_code, default_code, f"FINS error 0x{err_code:04X}")
+
+            # FIXED-JOINT: 内存区写响应（MRC=01,SRC=02）到 EndCode 为止，没有数据段
+            # （len==14 是合法完整帧）；原实现无条件按读响应解析数据段，写永远报
+            # "response data truncated: length 14 <= 14"。
+            is_write_cmd = len(fins_command) > 11 and fins_command[10] == 0x01 and fins_command[11] == 0x02
+            if is_write_cmd:
+                return True
 
             data_start = 14
             if len(response) <= data_start:
@@ -2190,11 +2288,13 @@ class OmronFinsDriver(DriverPlugin):
             data_bytes = struct.pack(">H", int(value) & 0xFFFF)
 
         if not bit_access:
+            # FIXED-JOINT: 同读路径——字写地址 = 字地址(2B大端)+位号(1B=0)，
+            # 原按 24 位大端编码会把 D10 写到 "D0 的 bit10"
             offset_bytes = bytes(
                 [
-                    (offset >> 16) & 0xFF,
                     (offset >> 8) & 0xFF,
                     offset & 0xFF,
+                    0x00,
                 ]
             )
 
@@ -2217,7 +2317,11 @@ class OmronFinsDriver(DriverPlugin):
                 ]
             )
             + offset_bytes
-            + struct.pack(">H", len(data_bytes))
+            # FIXED-JOINT: FINS 内存区写的 count 字段是"字数"而非字节数。
+            # 原实现填 len(data_bytes)（uint16 写成 count=2 但只带 2 字节数据），
+            # 服务端/真实 PLC 按字数取数据时长度不足，静默丢弃整次写入
+            # （联调实测：驱动报写入成功但设备内存未变）。
+            + struct.pack(">H", (len(data_bytes) + 1) // 2)
             + data_bytes
         )
 
@@ -2250,8 +2354,12 @@ class OmronFinsDriver(DriverPlugin):
             if not recovered:
                 return False
 
+        # FIXED-JOINT: 服务层传入测点 NAME（如 "w0"），此前直接当 FINS 地址解析，
+        # 会写入错误的内存区（"w" 前缀 = WORK 区而非配置的 DM 区）或被拒绝。
+        # 读路径已有 name→address 映射，写路径补齐同一映射；未知点名回退原名。
+        address = self._resolve_point_address(device_id, point)
         try:
-            area, offset, data_type = self._parse_address(point)
+            area, offset, data_type = self._parse_address(address)
         except ValueError as e:
             self._log_error(FinsDriverErrors.WRITE_FAILED, point, str(e))
             self._audit_write(device_id, point, "", 0, None, value, "rejected", error_code="INVALID_ADDRESS")
@@ -2290,7 +2398,7 @@ class OmronFinsDriver(DriverPlugin):
         old_value = None
         if self._write_verify_enabled:
             try:
-                old_pv = await self._read_back_for_verify(point)
+                old_pv = await self._read_back_for_verify(address)
                 if isinstance(old_pv, PointValue) and old_pv.value is not None:
                     old_value = old_pv.value
                 elif not isinstance(old_pv, PointValue) and old_pv is not None:
@@ -2309,12 +2417,19 @@ class OmronFinsDriver(DriverPlugin):
                 if write_client is None:
                     return False
                 record_packet("tx", "fins", device_id, f"FINS Write: {point} = {value}")
-                if self._is_direct_mode:
+                # FIXED-JOINT: fins 库 write() 对 "w" 数据类型存在内部错误（异常被库
+                # 自身吞没导致静默失败，写不生效却返回成功）。统一优先使用驱动内置
+                # 精确帧写入（事务锁+精确分帧），仅当内置路径异常时回退到库写。
+                try:
                     await asyncio.wait_for(
                         self._write_point_direct_mode(area, offset, value, data_type),
                         timeout=self._WRITE_TIMEOUT,
                     )
-                else:
+                except asyncio.CancelledError:
+                    raise
+                except (FinsResponseError, FinsWriteError):
+                    raise
+                except Exception:
                     await asyncio.wait_for(
                         self._run_in_thread(write_client.write, value, area, offset, data_type),
                         timeout=self._WRITE_TIMEOUT,
@@ -2328,7 +2443,7 @@ class OmronFinsDriver(DriverPlugin):
             verify_ok = None
             if self._write_verify_enabled:
                 await asyncio.sleep(self._WRITE_VERIFY_DELAY_MS / 1000.0)
-                read_back = await self._read_back_for_verify(point)
+                read_back = await self._read_back_for_verify(address)
                 read_val = None
                 if isinstance(read_back, PointValue) and read_back.value is not None:
                     read_val = read_back.value

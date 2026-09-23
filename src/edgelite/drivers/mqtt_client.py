@@ -1222,38 +1222,54 @@ class MqttClientDriver(DriverPlugin):
                     return  # 路由匹配成功，结束处理
 
             # ── 回退到原有设备主题匹配逻辑 ──
-            for device_id, dev_config in list(self._device_configs.items()):  # FIXED-P1: 快照遍历防止竞态
-                subscribe_topic = dev_config.get("topic") or dev_config.get(
-                    "subscribe_topic", f"edgelite/{device_id}/data"
-                )
-                if topic == subscribe_topic or topic.endswith(subscribe_topic):
-                    async with self._values_lock:
-                        point_values = self._latest_values.setdefault(device_id, {})
-                        # FIXED-P1: LRU淘汰策略，先删除已存在key再插入，使更新后的key排在dict末尾
-                        if isinstance(data, dict):
-                            for k, v in data.items():
-                                point_values.pop(k, None)
-                                point_values[k] = v
-                        else:
-                            point_values.pop("value", None)
-                            point_values["value"] = data
-                        # CROSS-003: 限制每个设备的测点数量
-                        while len(point_values) > self._MAX_POINTS_PER_DEVICE:
-                            point_values.pop(next(iter(point_values)))
+            # FIXED-JOINT: 通配符订阅（如 "protoforge/#"、"protoforge/+/+"）必须用 MQTT
+            # 通配符匹配；原实现只做相等/endswith 匹配，通配订阅的消息全部被静默丢弃
+            # （联调实测：ProtoForge 每 5s 发布但 EdgeLite 点位恒为空）。同时优先利用
+            # 负载自带 device_id/point/value 字段（工业 MQTT 常见自描述格式，亦为
+            # ProtoForge 推送格式）精确归位设备与测点，避免 device_id/point 等
+            # 元数据字段混入测点表。
+            matched_device = ""
+            if isinstance(data, dict) and data.get("device_id"):
+                candidate = str(data["device_id"])
+                if candidate in self._device_configs:
+                    matched_device = candidate
+            if not matched_device:
+                for device_id, dev_config in list(self._device_configs.items()):  # FIXED-P1: 快照遍历防止竞态
+                    subscribe_topic = dev_config.get("topic") or dev_config.get(
+                        "subscribe_topic", f"edgelite/{device_id}/data"
+                    )
+                    if topic == subscribe_topic or self._topic_matches(subscribe_topic, topic):
+                        matched_device = device_id
+                        break
 
-                    if self._data_callback:
-                        # FIXED-P1: _data_callback异常被静默吞没，包装为安全回调添加日志记录
-                        # FIXED(P1): 原问题-B023 循环变量捕获; 修复-使用默认参数绑定当前 device_id 和 data 的值
-                        async def _safe_callback(device_id=device_id, data=data):
-                            try:
-                                await self._data_callback(
-                                    device_id=device_id, data=data
-                                )  # FIXED-P1: 统一回调签名为关键字参数
-                            except Exception as e:
-                                logger.error("[mqtt_client] Data callback error for device=%s: %s", device_id, e)
+            if matched_device:
+                device_id = matched_device
+                if isinstance(data, dict) and data.get("point") is not None and "value" in data:
+                    point_data: dict[str, Any] = {str(data["point"]): data.get("value")}
+                else:
+                    point_data = data
+                async with self._values_lock:
+                    point_values = self._latest_values.setdefault(device_id, {})
+                    # FIXED-P1: LRU淘汰策略，先删除已存在key再插入，使更新后的key排在dict末尾
+                    for k, v in point_data.items():
+                        point_values.pop(k, None)
+                        point_values[k] = v
+                    # CROSS-003: 限制每个设备的测点数量
+                    while len(point_values) > self._MAX_POINTS_PER_DEVICE:
+                        point_values.pop(next(iter(point_values)))
 
-                        self._register_task(_safe_callback())
-                    break
+                if self._data_callback:
+                    # FIXED-P1: _data_callback异常被静默吞没，包装为安全回调添加日志记录
+                    # FIXED(P1): 原问题-B023 循环变量捕获; 修复-使用默认参数绑定当前 device_id 和 data 的值
+                    async def _safe_callback(device_id=device_id, data=point_data):
+                        try:
+                            await self._data_callback(
+                                device_id=device_id, data=data
+                            )  # FIXED-P1: 统一回调签名为关键字参数
+                        except Exception as e:
+                            logger.error("[mqtt_client] Data callback error for device=%s: %s", device_id, e)
+
+                    self._register_task(_safe_callback())
 
         except asyncio.CancelledError:
             raise

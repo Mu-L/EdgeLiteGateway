@@ -452,7 +452,11 @@ class McDriver(DriverPlugin):
         # FX5U 特殊处理
         self._is_fx5u = plc_type.upper() in ("FX5U", "FX5", "FX5U SLMP", "FX3U")
         self._slmp_direct_mode = slmp_direct_mode
-        self._byte_order = config.get("byte_order", "little" if self._is_fx5u else "big")
+        # FIXED-JOINT: 三菱 Q/iQ-R/FX5U 数据寄存器均为小端字节序、float32 低字在前
+        # （与 pymcprotocol 默认 byte_order="little" 及真实 PLC 一致），原实现仅 FX5U
+        # 默认 little，其余系列默认 big 导致 float32/long 点位读到字节序颠倒的值
+        # （联调实测：iQ-R 读 ProtoForge float32 点位 D10 得到字节交换后的错误值）。
+        self._byte_order = config.get("byte_order", "little")
 
         # 通信模式解析: binary (默认, 向后兼容) 或 ascii (旧式 Q 系列串口网关)
         communication_mode = str(config.get("communication_mode", "binary")).lower()
@@ -1120,7 +1124,12 @@ class McDriver(DriverPlugin):
         if not self._running or not self._client:
             await self._try_reconnect(device_id)
             return False
-        addr, suffix = self._parse_address(point)
+        # FIXED-JOINT: 调度器/服务层传入的是测点 NAME（如 "temp_a"），写路径此前直接把
+        # NAME 当 MC 地址解析（如小写 "d0" 触发 pymcprotocol DeviceCodeError，恒 400）。
+        # 读路径 read_points 已有 name→address 映射，写路径补齐同一映射；
+        # 未知点名时回退原名，兼容 name==address 的历史配置。
+        address = self._resolve_point_address(device_id, point)
+        addr, suffix = self._parse_address(address)
         if not self._validate_write_value(value, suffix):
             self._log_error(device_id, McDriverErrors.WRITE_VALUE_INVALID, f"{point}={value} suffix={suffix}")
             self._record_write_audit(device_id, point, addr, suffix, None, value, "rejected_invalid")
@@ -1134,8 +1143,8 @@ class McDriver(DriverPlugin):
             return False
         old_value = None
         try:
-            old_pv = await self._read_points_batch([point])
-            old_pv_val = old_pv.get(point)
+            old_pv = await self._read_points_batch([address])
+            old_pv_val = old_pv.get(address)
             if isinstance(old_pv_val, PointValue) and old_pv_val.quality == "good":
                 old_value = old_pv_val.value
         except Exception as e:
@@ -1152,7 +1161,7 @@ class McDriver(DriverPlugin):
                 record_packet("tx", "mc", device_id, f"MC Write: {point} = {value}")
                 async with self._lock:
                     await self._call_sync(
-                        self._sync_write_point, point, value, timeout=self._WRITE_TIMEOUT, write=True
+                        self._sync_write_point, address, value, timeout=self._WRITE_TIMEOUT, write=True
                     )  # FIXED-P1: 写操作持锁
                 record_packet("rx", "mc", device_id, f"MC Write: {point} = {value} OK")
                 self._write_rate_limits[point] = time.monotonic()
@@ -1183,8 +1192,8 @@ class McDriver(DriverPlugin):
         verify_ok = True
         try:
             await asyncio.sleep(self._WRITE_VERIFY_DELAY)
-            verify_pv = await self._read_points_batch([point])
-            verify_val = verify_pv.get(point)
+            verify_pv = await self._read_points_batch([address])
+            verify_val = verify_pv.get(address)
             read_back = (
                 verify_val.value if isinstance(verify_val, PointValue) and verify_val.quality == "good" else None
             )
@@ -1249,13 +1258,18 @@ class McDriver(DriverPlugin):
         if not self._running or not self._client:
             await self._try_reconnect(device_id)
             return {point: False for point in points}
-        # 将 dict 转换为 list[tuple] 以适配内部合并逻辑
-        writes = list(points.items())
+        # FIXED-JOINT: 批量写入同样需要 name→address 映射；结果键再映射回 NAME，
+        # 保证调用方（服务层）拿到的是与请求一致的点名键。
+        resolved = {name: self._resolve_point_address(device_id, name) for name in points}
+        addr_to_name = {}
+        for name, addr in resolved.items():
+            addr_to_name.setdefault(addr, name)
+        writes = [(resolved[n], v) for n, v in points.items()]
         merged = self._merge_contiguous_writes(writes)
         results_map: dict[str, bool] = {}
 
         async def _do_single(point, value):
-            return await self.write_point(device_id, point, value)
+            return await self.write_point(device_id, addr_to_name.get(point, point), value)
 
         async def _do_merged(group_key, addr, values_list):
             # FIXED-P0: 合并写入路径添加值验证，与单点写入路径一致，防止超范围值写入PLC
@@ -1284,10 +1298,10 @@ class McDriver(DriverPlugin):
             if entry.get("merged"):
                 ok = await _do_merged(entry["key"], entry["addr"], entry["values"])
                 for pt in entry["points"]:
-                    results_map[pt] = ok
+                    results_map[addr_to_name.get(pt, pt)] = ok
             else:
                 point, value = entry["point"], entry["value"]
-                results_map[point] = await _do_single(point, value)
+                results_map[addr_to_name.get(point, point)] = await _do_single(point, value)
         return results_map
 
     def _merge_contiguous_writes(self, writes: list[tuple[str, Any]]) -> list[dict]:
@@ -1953,6 +1967,22 @@ class McDriver(DriverPlugin):
             if pt:
                 return pt
         return {}
+
+    def _resolve_point_address(self, device_id: str, name: str) -> str:
+        """FIXED-JOINT: 将测点 NAME 解析为 MC 线上地址。
+
+        服务层/调度器传入的是测点名（如 "temp_a"），而协议层需要配置地址（如 "D100"）。
+        优先取 add_device 注册的点位表映射；未注册或无地址时回退原名，
+        兼容 name==address 的历史配置（如点位 "D100"）。
+        """
+        device = self._devices.get(device_id)
+        if device:
+            pt = device.get("points", {}).get(name)
+            if isinstance(pt, dict):
+                addr = pt.get("address")
+                if addr:
+                    return str(addr)
+        return name
 
     def _update_degrade_level(self, device_id: str) -> None:
         total = 0

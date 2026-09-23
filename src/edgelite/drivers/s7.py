@@ -1446,7 +1446,12 @@ class S7Driver(DriverPlugin):
             await self._try_reconnect(device_id)
             return False
 
-        parts = point.split(".")
+        # FIXED-JOINT: 服务层/调度层传入的是测点 NAME（如 "word1"），写路径此前直接把
+        # NAME 当 S7 地址解析（"word1".split(".") 不含 DB 前缀 → 恒返回
+        # WRITE_VALUE_INVALID，HTTP 400）。读路径已有 name→address 映射，写路径补齐；
+        # 未知点名回退原名，兼容 name==address 的历史配置。
+        address = self._resolve_point_address(device_id, point)
+        parts = address.split(".")
         if len(parts) < 2 or not parts[0].startswith("DB"):
             self._log_error(device_id, S7DriverErrors.WRITE_VALUE_INVALID, f"Invalid address: {point}")
             return False
@@ -1475,7 +1480,7 @@ class S7Driver(DriverPlugin):
                 if self._write_verify_enabled:
                     try:
                         old_value = await asyncio.wait_for(
-                            self._run_in_s7_thread_async(self._read_point, point),
+                            self._run_in_s7_thread_async(self._read_point, address),
                             timeout=self._WRITE_TIMEOUT,
                         )
                     except Exception as e:
@@ -1483,7 +1488,7 @@ class S7Driver(DriverPlugin):
                         old_value = None
                 record_packet("tx", "s7", device_id, f"S7 Write: {point}={value}")
                 await asyncio.wait_for(
-                    self._run_in_s7_thread_async(self._write_point, point, value),
+                    self._run_in_s7_thread_async(self._write_point, address, value),
                     timeout=self._WRITE_TIMEOUT,
                 )
                 record_packet("rx", "s7", device_id, f"S7 Write OK: {point}")
@@ -1491,7 +1496,7 @@ class S7Driver(DriverPlugin):
                     try:
                         db_number = int(parts[0][2:])
                         byte_offset = int(parts[1][1:])
-                        await self._verify_write(point, value, type_char, db_number, byte_offset, bit_offset)
+                        await self._verify_write(address, value, type_char, db_number, byte_offset, bit_offset)
                     except self.WriteVerifyError as e:
                         self._record_write_failure(device_id)
                         self._log_error(device_id, S7DriverErrors.WRITE_VERIFY_FAILED, str(e))
@@ -1644,6 +1649,21 @@ class S7Driver(DriverPlugin):
             "points": {p.get("name", p.get("address", "")): p for p in points if p.get("name") or p.get("address")},
         }
         logger.info("S7设备已添加: %s (%d测点)", device_id, len(points))
+
+    def _resolve_point_address(self, device_id: str, name: str) -> str:
+        """FIXED-JOINT: 将测点 NAME 解析为 S7 地址（如 "word1" -> "DB1.DBD2"）。
+
+        服务层传入测点名，协议层需要配置地址；未注册或无地址时回退原名，
+        兼容 name==address 的历史配置。
+        """
+        device = self._devices.get(device_id)
+        if device:
+            pt = device.get("points", {}).get(name)
+            if isinstance(pt, dict):
+                addr = pt.get("address")
+                if addr:
+                    return str(addr)
+        return name
 
     async def discover_devices(self, config: dict) -> list[dict]:
         """扫描IP段发现S7设备，通过尝试S7连接测试判断设备是否在线

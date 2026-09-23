@@ -133,6 +133,7 @@ def _make_driver() -> OmronFinsDriver:
     d._lock = asyncio.Lock()
     d._client_lock = threading.RLock()
     d._async_client_lock = asyncio.Lock()
+    d._fins_txn_lock = threading.Lock()  # FIXED-JOINT: 与 __init__ 保持一致，事务串行锁
     d._in_flight_requests = 0
     d._in_flight_lock = threading.Lock()
     d._last_values = OrderedDict()
