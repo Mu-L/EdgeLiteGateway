@@ -64,6 +64,56 @@ class DeviceService:
             await self._simulator_driver.start({})
         return self._simulator_driver
 
+    async def _recreate_driver_instance(self, device: dict) -> Any:
+        """按需重建设备驱动实例（调用者必须已持有 self._lock）。
+
+        FIXED-ROBUST-01: 设备存在但 _driver_instances 缺失的场景——典型于应用启动时
+        目标 PLC 离线导致 load_existing_devices 中 driver.start() 失败、驱动实例未注册。
+        此前该状态永久不可恢复（batch start-collect 报 "Device driver not found"，
+        S7/MC 等驱动只能重启应用恢复）。现提供按需重建路径：注册表有驱动类则
+        重新 start + add_device，等价于一次完整的重连重试。
+
+        Returns:
+            驱动实例；无驱动类时返回 None。
+
+        Raises:
+            ValueError: 驱动启动失败（含原因），由调用方决定报错语义。
+        """
+        device_id = device.get("device_id", "")
+        protocol = device.get("protocol")
+        if not device_id or protocol is None:
+            return None
+        driver_class = self._registry.get_driver_class(protocol)
+        if driver_class is None:
+            logger.warning(
+                "Recreate driver skipped for %s: no registered driver class for protocol %s",
+                device_id,
+                protocol,
+            )
+            return None
+        if protocol == "simulator":
+            driver: DriverPlugin = await self._get_simulator_driver_unlocked()
+            await driver.add_device(device_id, device.get("config", {}), device.get("points", []))
+            self._driver_instances[device_id] = driver
+            logger.info("Driver instance recreated for %s (simulator)", device_id)
+            return driver
+        driver = driver_class()
+        try:
+            # 与 create_device/load_existing_devices 保持一致的 30s 超时保护
+            await asyncio.wait_for(driver.start(device.get("config", {})), timeout=30.0)
+            with contextlib.suppress(NotImplementedError):
+                await driver.add_device(device_id, device.get("config", {}), device.get("points", []))
+        except Exception as e:
+            logger.warning("Driver recreate failed for %s (protocol=%s): %s", device_id, protocol, e)
+            try:
+                await asyncio.wait_for(driver.stop(), timeout=5.0)
+            except Exception as stop_err:
+                logger.debug("Driver stop after failed recreate for %s: %s", device_id, stop_err)
+            raise ValueError(f"Device driver recreate failed: {e}") from e
+        self._driver_instances[device_id] = driver
+        logger.info("Driver instance recreated for %s (protocol=%s)", device_id, protocol)
+        return driver
+
     async def get_driver_instance(self, device_id: str) -> Any:
         """FIXED-P0: 公开访问器，替代直接访问_driver_instances私有属性，确保锁保护。
         返回指定设备的驱动实例，若不存在返回None。"""
@@ -580,13 +630,21 @@ class DeviceService:
             device = await self._repo.get(device_id)
             if device is None:
                 raise ValueError(f"Device not found: {device_id}")
-            # 状态守卫：已 online 时直接返回，避免重复启动采集
-            if device.get("status") == "online":
+            driver = self._driver_instances.get(device_id)
+            # 状态守卫：已 online 且驱动实例健在时直接返回，避免重复启动采集
+            if device.get("status") == "online" and driver is not None:
                 logger.debug("Device %s already online, skip start_collect", device_id)
                 return True
-            driver = self._driver_instances.get(device_id)
+            # FIXED-ROBUST-01: 驱动实例缺失时按需重建。原实现直接抛
+            # "Device driver not found"——应用启动期连接失败（如 PLC 离线）的设备
+            # 永久无法恢复，只能重启整个应用。现重建路径等价于一次完整重连重试。
             if driver is None:
-                raise ValueError(f"Device driver not found: {device_id}")
+                async with self._lock:
+                    driver = self._driver_instances.get(device_id)
+                    if driver is None:
+                        driver = await self._recreate_driver_instance(device)
+                if driver is None:
+                    raise ValueError(f"Device driver not found: {device_id}")
             await self._scheduler.start_collect(
                 device_id,
                 driver,
@@ -1268,7 +1326,11 @@ class DeviceService:
 
                     if protocol == "simulator":
                         driver: DriverPlugin = await self._get_simulator_driver()
-                        await driver.add_device(device["device_id"], device.get("points", []))
+                        # FIXED-ROBUST-02: 原调用 add_device(device_id, points) 把 points
+                        # 误传为 config 形参，points 形参缺省为 None → 设备注册为空点位表，
+                        # 重启后模拟器 read_points 恒返回空，/points 与采集均无数据。
+                        # 修复-与 create_device 保持一致的三参调用。
+                        await driver.add_device(device["device_id"], device.get("config", {}), device.get("points", []))
                         self._driver_instances[device["device_id"]] = driver
                         await self._scheduler.start_collect(
                             device["device_id"],

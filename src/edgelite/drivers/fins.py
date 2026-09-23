@@ -846,7 +846,7 @@ class OmronFinsDriver(DriverPlugin):
         self._quality_history[address].append(quality)
 
     def _validate_write_value(self, value: Any, data_type: str) -> tuple[bool, str]:
-        if data_type == "b":
+        if self._is_bit_access(data_type):
             if value not in (0, 1, True, False):
                 return False, f"bit value must be 0 or 1, got {value}"
             return True, ""
@@ -1828,6 +1828,21 @@ class OmronFinsDriver(DriverPlugin):
             addr_upper = addr_part.upper()
             address = addr_part
 
+        # FIXED-P0: 支持 FINS 标准位地址记法 D20.5（字地址.位号）。
+        # 原实现直接对 "20.5" 调用 _safe_int 导致解析失败。将位号编入
+        # data_type（如 "b5"），读取时按位提取，兼容既有 "b"（bit 0）语义。
+        bit_suffix: str = ""
+        dot_pos = addr_upper.find(".")
+        if dot_pos > 0 and addr_upper[dot_pos + 1 :].isdigit():
+            bit_no = int(addr_upper[dot_pos + 1 :])
+            if not 0 <= bit_no <= 15:
+                raise ValueError(f"FINS位号超出范围[0-15]: {address}")
+            bit_suffix = str(bit_no)
+            addr_upper = addr_upper[:dot_pos]
+            address = address[:dot_pos] if "." in address else address
+            # 位地址强制位数据类型（覆盖逗号后缀的 dt），bit 号编入类型码供帧构造使用
+            data_type = f"b{bit_suffix}"
+
         if addr_upper.startswith("EM"):
             offset = _safe_int(addr_upper[2:])
             return ("e", offset, data_type)
@@ -1885,23 +1900,57 @@ class OmronFinsDriver(DriverPlugin):
             client = self._client
         if client is None:
             raise ConnectionError("FINS client is not connected")
+        # FIXED-ROBUST-03: bN 位类型（D20.5 语法）在非 direct 模式下连接实现不支持该类型码，
+        # 读字后本地提取目标位，避免把 "b5" 直接透传给 client.read 导致解析失败
+        if self._is_bit_access(data_type):
+            if data_type == "b":
+                return client.read(area, offset, data_type="b", number_of_values=1)
+            word = client.read(area, offset, data_type="w", number_of_values=1)
+            return (int(word) >> int(data_type[1:])) & 1
         return client.read(area, offset, data_type=data_type, number_of_values=1)
+
+    @staticmethod
+    def _is_bit_access(data_type: str) -> bool:
+        """FIXED-ROBUST-03: 判断是否为 FINS 位访问类型（b / b0-b15）。
+
+        原缺陷：_read_point_direct_mode 调用了 self._is_bit_access 但该方法从未定义，
+        首次调用即抛 AttributeError，被外层 except 捕获后恒走 fallback 慢路径，
+        直接模式快路径成为死代码。
+        """
+        return (
+            isinstance(data_type, str)
+            and data_type.startswith("b")
+            and (len(data_type) == 1 or data_type[1:].isdigit())
+        )
 
     def _read_point_direct_mode(self, area: str, offset: int, data_type: str) -> Any:
         try:
-            area_code = self._get_fins_area_code(area)
+            bit_access = self._is_bit_access(data_type)
+            area_code = self._get_fins_area_code(area, bit_access=bit_access)
             if area_code is None:
                 raise ValueError(f"FINS直接模式不支持区域: {area}")
 
-            offset_bytes = bytes(
-                [
-                    (offset >> 16) & 0xFF,
-                    (offset >> 8) & 0xFF,
-                    offset & 0xFF,
-                ]
-            )
+            if bit_access:
+                # FIXED-P0: FINS 位访问地址 = word(2B 大端) + bit(1B)；
+                # word 读取时第三字节为 0，与既有行为一致
+                bit_no = int(data_type[1:]) if len(data_type) > 1 else 0
+                offset_bytes = bytes(
+                    [
+                        (offset >> 8) & 0xFF,
+                        offset & 0xFF,
+                        bit_no,
+                    ]
+                )
+            else:
+                offset_bytes = bytes(
+                    [
+                        (offset >> 16) & 0xFF,
+                        (offset >> 8) & 0xFF,
+                        offset & 0xFF,
+                    ]
+                )
 
-            word_count = 1 if data_type in ("b", "w", "i", "ui") else 2
+            word_count = 1 if self._is_bit_access(data_type) or data_type in ("b", "w", "i", "ui") else 2
 
             fins_command = (
                 bytes(
@@ -2048,11 +2097,14 @@ class OmronFinsDriver(DriverPlugin):
 
             data_bytes = response[data_start:]
 
-            if data_type == "b":
+            if self._is_bit_access(data_type):
                 if not data_bytes:
                     raise RuntimeError(
                         f"FINS response data truncated: expected >=1 byte for bit, got {len(data_bytes)}"
                     )
+                # FIXED-ROBUST-03: 原 `data_type == "b"` 无法匹配 D20.5 语法产生的
+                # "b1"-"b15"，位读响应会被误走字解码分支。FINS 位读响应将目标位
+                # 存于字节最低位，统一 & 0x01 提取。
                 return data_bytes[0] & 0x01
             elif data_type == "dw":
                 if len(data_bytes) >= 4:
@@ -2089,7 +2141,7 @@ class OmronFinsDriver(DriverPlugin):
             with self._client_lock:
                 self._socket_in_use = False
 
-    def _get_fins_area_code(self, area: str) -> int | None:
+    def _get_fins_area_code(self, area: str, bit_access: bool = False) -> int | None:
         area_codes = {
             "d": 0x82,
             "e": 0xA0,
@@ -2103,15 +2155,31 @@ class OmronFinsDriver(DriverPlugin):
             "dr": 0xBC,
             "cf": 0x28,
         }
-        return area_codes.get(area)
+        code = area_codes.get(area)
+        if code is None:
+            return None
+        # FIXED-P0: FINS 位访问的区码 = 字访问区码清除最高位（0x82→0x02 等）
+        return (code & 0x7F) if bit_access else code
 
     async def _write_point_direct_mode(self, area: str, offset: int, value: Any, data_type: str) -> None:
-        area_code = self._get_fins_area_code(area)
+        bit_access = self._is_bit_access(data_type)
+        area_code = self._get_fins_area_code(area, bit_access=bit_access)
         if area_code is None:
             raise ValueError(f"FINS直接模式不支持区域: {area}")
 
-        if data_type == "b":
+        if bit_access:
+            # FIXED-ROBUST-03: 位写必须使用位区码 + word(2B)+bit(1B) 偏移 + 1 字节数据。
+            # 原实现 `data_type == "b"` 无法匹配 D20.5 语法产生的 "b1"-"b15"，
+            # 位写会走字写分支整字覆盖（目标字其余 15 位被清零）。
             data_bytes = bytes([0x01 if value else 0x00])
+            bit_no = int(data_type[1:]) if len(data_type) > 1 else 0
+            offset_bytes = bytes(
+                [
+                    (offset >> 8) & 0xFF,
+                    offset & 0xFF,
+                    bit_no,
+                ]
+            )
         elif data_type in ("dw", "long"):
             data_bytes = struct.pack(">I", int(value))
         elif data_type == "float" or data_type == "r":
@@ -2121,13 +2189,14 @@ class OmronFinsDriver(DriverPlugin):
         else:
             data_bytes = struct.pack(">H", int(value) & 0xFFFF)
 
-        offset_bytes = bytes(
-            [
-                (offset >> 16) & 0xFF,
-                (offset >> 8) & 0xFF,
-                offset & 0xFF,
-            ]
-        )
+        if not bit_access:
+            offset_bytes = bytes(
+                [
+                    (offset >> 16) & 0xFF,
+                    (offset >> 8) & 0xFF,
+                    offset & 0xFF,
+                ]
+            )
 
         fins_command = (
             bytes(
@@ -2269,7 +2338,7 @@ class OmronFinsDriver(DriverPlugin):
                 if read_val is not None:
                     if data_type == "float":
                         verify_ok = abs(read_val - float(value)) < 0.001
-                    elif data_type == "b":
+                    elif self._is_bit_access(data_type):
                         verify_ok = (read_val & 0x01) == (1 if value else 0)
                     else:
                         verify_ok = read_val == value

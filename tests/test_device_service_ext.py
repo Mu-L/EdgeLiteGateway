@@ -471,6 +471,8 @@ class TestBatch:
         assert result["d1"][0] is False
 
     async def test_batch_start_collect(self, device_service, device_repo):
+        # FIXED-ROBUST-01: online 且驱动实例健在时才跳过（原实现不校验驱动实例）
+        device_service._driver_instances["d1"] = AsyncMock()
         device_repo.get.return_value = {"device_id": "d1", "status": "online"}
         result = await device_service.batch_start_collect(["d1"])
         assert result["d1"][0] is True

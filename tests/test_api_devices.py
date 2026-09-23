@@ -1267,6 +1267,17 @@ class TestDeviceSubResources:
     def test_get_metrics_success(self):
         t = _make_client("admin")
         t.svc.get_device = AsyncMock(return_value=DEVICE)
+        # FIXED-ROBUST-04: /metrics 端点现在经由 DeviceService 获取真实驱动实例，
+        # 需显式配置驱动 mock 返回指标（默认 AsyncMock 会把 sync 方法变成协程导致序列化失败）
+        drv = MagicMock()
+        drv.get_observability_metrics = MagicMock(
+            return_value={
+                "read_error_rate": 0.1,
+                "write_error_rate": 0.0,
+                "consecutive_failures": 0,
+            }
+        )
+        t.svc.get_driver_instance = AsyncMock(return_value=drv)
         r = t.client.get("/api/v1/devices/dev-1/metrics")
         assert r.status_code == 200
         assert "read_error_rate" in r.json()["data"]

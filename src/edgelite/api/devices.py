@@ -1401,13 +1401,12 @@ async def write_device_point(
 
         # Check write policy
         try:
-            from edgelite.drivers.registry import get_driver_registry
-
-            registry = get_driver_registry()
-            if registry:
-                driver = cast(Any, registry).get_driver_instance(device_id)
-                if driver and not driver.check_write_allowed(device_id, body.point):
-                    raise HTTPException(status_code=403, detail=DeviceErrors.WRITE_NOT_ALLOWED)
+            # FIXED-ROBUST-04: 原代码调用 registry.get_driver_instance(device_id)，
+            # 但 DriverRegistry 只维护驱动类、从未维护实例，该调用恒失败被静默吞没，
+            # 写策略（check_write_allowed）从未真正生效。改由 DeviceService 提供实例。
+            driver = await svc.get_driver_instance(device_id)
+            if driver and not driver.check_write_allowed(device_id, body.point):
+                raise HTTPException(status_code=403, detail=DeviceErrors.WRITE_NOT_ALLOWED)
         except HTTPException:
             raise
         except Exception as e:
@@ -1701,14 +1700,13 @@ async def get_device_metrics(
         raise HTTPException(status_code=503, detail=CommonErrors.SERVICE_NOT_READY)
     await _check_device_owner(svc, device_id, user)
     try:
-        from edgelite.drivers.registry import get_driver_registry
-
-        registry = get_driver_registry()
-        if registry:
-            driver = cast(Any, registry).get_driver_instance(device_id)
-            if driver and hasattr(driver, "get_observability_metrics"):
-                metrics = driver.get_observability_metrics(device_id)
-                return ApiResponse(data=metrics)
+        # FIXED-ROBUST-04: 原代码调用 registry.get_driver_instance(device_id)，
+        # 但 DriverRegistry 只维护驱动类、从未维护实例，该调用恒抛 AttributeError，
+        # 导致设备可观测性指标永远返回默认零值。改由 DeviceService 提供实例。
+        driver = await svc.get_driver_instance(device_id)
+        if driver and hasattr(driver, "get_observability_metrics"):
+            metrics = driver.get_observability_metrics(device_id)
+            return ApiResponse(data=metrics)
     except HTTPException:
         raise
     except Exception as e:

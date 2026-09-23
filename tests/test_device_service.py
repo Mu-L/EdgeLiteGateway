@@ -575,6 +575,8 @@ class TestCollect:
             await device_service.start_collect("d1")
 
     async def test_start_collect_already_online(self, device_service, device_repo):
+        # FIXED-ROBUST-01: online 且驱动实例健在时才跳过（原实现不校验驱动实例）
+        device_service._driver_instances["d1"] = _make_mock_driver()
         device_repo.get.return_value = {"device_id": "d1", "status": "online"}
         assert await device_service.start_collect("d1") is True
 
