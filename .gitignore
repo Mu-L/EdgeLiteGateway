@@ -200,3 +200,18 @@ docs/articles/
 mypy_*.txt
 *_mypy.txt
 mypy_out.txt
+
+# ---------- 联调/本地调试残留防护（2026-09 生产化清理） ----------
+/_pf_*
+/_joint_*
+/_route_*
+/_pytest_*.log
+/aa.txt
+/.ci-sim/
+/.wt_baseline/
+/.venv-ci/
+/.initial_admin_password
+/mypy_*.txt
+/test_ci_result.txt
+/test_job_log.txt
+/test-results/
