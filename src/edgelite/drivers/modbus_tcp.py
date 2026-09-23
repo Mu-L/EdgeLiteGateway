@@ -1508,7 +1508,7 @@ class ModbusTcpDriver(DriverPlugin):
             pt_def = normalize_modbus_point_def(pt_def)
             address = int(pt_def.get("address", 0))
             data_type = pt_def.get("data_type", "float32")
-            reg_type = pt_def.get("register_type", "holding")
+            # 寄存器类型无需单独判断：写入路径按 data_type 分发（bool→write_coil，其余→write_register）
             clamp = pt_def.get("clamp", config.get("clamp"))
             old_value = self._last_values.get((device_id, point))
 

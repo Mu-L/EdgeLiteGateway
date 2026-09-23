@@ -140,7 +140,7 @@ def parse_modbus_address(raw: Any) -> tuple[str | None, int | None]:
         return None, int(s)
     for prefix, reg_type in _MODBUS_ADDR_PREFIXES:
         if s.startswith(prefix):
-            tail = s[len(prefix):]
+            tail = s[len(prefix) :]
             if tail.isdigit():
                 return reg_type, int(tail)
             return None, None

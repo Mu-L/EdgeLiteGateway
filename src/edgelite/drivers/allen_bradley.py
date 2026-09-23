@@ -1675,11 +1675,15 @@ class AllenBradleyDriver(DriverPlugin):
                 else:
                     cip_err = self._parse_cip_status(status)
                     self._log_error(
-                        device_id, "ERR_AB_WRITE_FAILED", f"point={point} cip={cip_err} status={self._cip_status_display(status)}"
+                        device_id,
+                        "ERR_AB_WRITE_FAILED",
+                        f"point={point} cip={cip_err} status={self._cip_status_display(status)}",
                     )
                     self._record_write_audit(device_id, point, old_value, value, False, cip_err)
                     self._record_write_failure(device_id)
-                    record_packet("rx", "ab", device_id, f"CIP Write Response: Status={self._cip_status_display(status)}")
+                    record_packet(
+                        "rx", "ab", device_id, f"CIP Write Response: Status={self._cip_status_display(status)}"
+                    )
                     return False
             except asyncio.CancelledError:
                 raise

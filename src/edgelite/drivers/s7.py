@@ -905,7 +905,9 @@ class S7Driver(DriverPlugin):
                 try:
                     async with self._lock:
                         values = await asyncio.wait_for(
-                            self._run_in_s7_thread_async(self._read_points_batch, read_addrs, segment_bytes, addr_to_dtype),
+                            self._run_in_s7_thread_async(
+                                self._read_points_batch, read_addrs, segment_bytes, addr_to_dtype
+                            ),
                             timeout=min(self._READ_TIMEOUT, remaining_timeout),
                         )
                         result = {addr_to_name.get(k, k): v for k, v in values.items()}
@@ -1102,8 +1104,9 @@ class S7Driver(DriverPlugin):
 
         return result
 
-    def _read_points_batch(self, addresses: list[str], max_segment_bytes: int | None = None,
-                           data_types: dict[str, str] | None = None) -> dict[str, Any]:
+    def _read_points_batch(
+        self, addresses: list[str], max_segment_bytes: int | None = None, data_types: dict[str, str] | None = None
+    ) -> dict[str, Any]:
         result: dict[str, Any] = {}
         if not addresses:
             return result
@@ -1247,8 +1250,9 @@ class S7Driver(DriverPlugin):
         return segments
 
     @staticmethod
-    def _extract_value(data: bytearray, offset: int, size: int, type_char: str, bit_offset: int,
-                       data_type: str | None = None) -> Any:
+    def _extract_value(
+        data: bytearray, offset: int, size: int, type_char: str, bit_offset: int, data_type: str | None = None
+    ) -> Any:
         import struct
 
         if not 0 <= bit_offset <= 7:
