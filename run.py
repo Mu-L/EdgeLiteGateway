@@ -13,6 +13,15 @@
 
 from __future__ import annotations
 
+import os
+import sys
+
+# FIXED-JOINT: 确保 v1.0 Community 的 src 目录优先于全局 site-packages 中
+# 可能存在的 v2.0 Enterprise editable install，避免加载错误版本的代码
+_src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
+if _src not in sys.path:
+    sys.path.insert(0, _src)
+
 from edgelite.__main__ import main
 
 if __name__ == "__main__":
