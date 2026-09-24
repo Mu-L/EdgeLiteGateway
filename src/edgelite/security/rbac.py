@@ -70,6 +70,11 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
     Role.OPERATOR: frozenset(
         {
             Permission.DEVICE_READ,
+            # FIXED-JOINT: 操作员补授点位下写权限。工业网关操作员的核心职责就是写
+            # 设定值/启停命令，原矩阵只有 admin 能写点，导致自动化与现场操作被迫
+            # 共用 admin 账号（并发登录控制下互相顶号）。写路径已有写策略、频率
+            # 限制与审计三重保护。
+            Permission.DEVICE_WRITE_POINT,
             Permission.DRIVER_READ,
             Permission.RULE_READ,
             Permission.RULE_TOGGLE,

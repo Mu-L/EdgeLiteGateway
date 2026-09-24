@@ -56,6 +56,7 @@ from edgelite.drivers.modbus_base import (
     _detect_slave_kwarg_name,
     _parse_modbus_exception,
     _set_client_slave_id,
+    assert_modbus_point_writable,
     normalize_modbus_point_def,
 )
 from edgelite.drivers.modbus_base import (
@@ -1458,6 +1459,10 @@ class ModbusRtuDriver(DriverPlugin):
 
         # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5）
         pt_def = normalize_modbus_point_def(pt_def)
+        # FIXED-JOINT: IR/DI 只读区与 access_mode="r" 拒绝下写，防静默跨区写
+        readonly_reason = assert_modbus_point_writable(pt_def)
+        if readonly_reason:
+            raise ValueError(f"{readonly_reason}")
         address = int(pt_def.get("address", 0))
         # 协议边界校验: Modbus 寄存器地址有效范围为 0-65535
         if not 0 <= address <= 65535:

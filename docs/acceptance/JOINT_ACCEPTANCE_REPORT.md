@@ -107,3 +107,53 @@ ProtoForge 侧：协议相关子集 86 passed；`test_edgelite_config_has_correc
 - `scripts/joint_acceptance.py` — 可重复验收脚本
 - `docs/acceptance/joint_acceptance_report.json` — 12/12 通过的机器可读结果
 - 本报告
+
+---
+
+## 附录：第二轮联调（2026-09-24，专用账号 + OPC-UA/HTTP 扩展）
+
+### A2. 结论
+
+**通过。** 矩阵扩展至 8 协议后 14/14 全部通过，全程使用专用 `joint_accept` 账号（operator
+角色 + 设备资源共享），不再与 admin 会话互顶。
+
+| 阶段 | 结果 |
+|---|---|
+| A 采集一致性（modbus/s7/mc/fins/ab/mqtt/**opcua**） | 7/7 PASS |
+| A HTTP 推送接收链路（webhook 被动接收验证） | 1/1 PASS |
+| B 下写链路（独立线上客户端验证） | 5/5 PASS |
+| C 故障注入与恢复 | PASS |
+
+### B2. 本轮修复
+
+| # | 修复 | 位置 |
+|---|---|---|
+| E10 | OPERATOR 角色补授 DEVICE_WRITE_POINT——工业操作员本职即写设定值；写路径已有写策略/频率限制/审计三重保护。修复后自动化与现场操作无需共用 admin | `security/rbac.py` |
+| E11 | `/devices/{id}/health` 对 http_webhook 等统计缺数值字段的驱动返回 None → ResponseValidationError → 500。现剔除 None 由模型默认值兜底，健康接口对任何协议可用 | `api/devices.py` |
+| E12 | 高负载下 SQLite 短暂锁表导致会话持久化失败 → 直接放弃内存注册 → 登录返回的 token 立即 401（联调实测 database is locked）。现降级为内存会话并告警，连接超时 5s→10s | `security/session_manager.py` |
+
+### C2. 环境与流程修正
+
+1. **专用账号**：`joint_accept`（operator）+ resource_shares 设备级授权；ProtoForge 全局
+   设置的 edgelite 凭据同步切换，其 IntegrationManager 的登录带 `no_revoke=True`，
+   不再触发并发登录互顶。
+2. **真机联调用例修复**（ProtoForge 侧）：`test_real_machine_joint` 以 ProtoForge venv
+   解释器启动 EdgeLite 子进程、缺 `influxdb_client` 即崩；现优先使用 EdgeLite 自带
+   `.venv-ci` 解释器。三个 EdgeLite 联调测试文件 64/64 通过。
+3. **MQTT 主题适配**：ProtoForge pf-mqtt 的 topic_prefix 被移除后发布主题变为
+   `pf-mqtt/temp`；EdgeLite 侧订阅改 `#`（负载自描述 device_id/point 路由不依赖主题）。
+4. **验收脚本健壮性**：重登后重置 CSRF、网络抖动重试、阶段 A 竞态重读（3 次）、
+   就绪判定要求 quality=good。
+
+### D2. 已知台架限制（非 EdgeLite 缺陷）
+
+1. **ProtoForge Modbus 双存储分歧**：REST 写点位的值与生成器 tick 的动态值分别落在
+   两个寄存器存储，独立 pymodbus 客户端与经 REST 写入路径的客户端可能读到不同数据
+   （联调实测：REST 写 9999 后线上探针读到的仍是生成器动态值）。EdgeLite 侧 word1
+   的写链路正确性由阶段 B 独立线上验证覆盖；阶段 A 采集用例收敛到生成器同步稳定的
+   temp 点。
+2. **resource-shares REST 422**：`GET/POST /api/v1/resource-shares` 返回
+   "query -> func: Field required"（疑似被带 func 查询参数的路由劫持），共享需直接
+   写 resource_shares 表。待查路由注册顺序。
+3. `test_real_machine_joint` 的 EdgeLite 子进程与常驻实例共用 `data/logs/edgelite.log`
+   导致日志轮转 PermissionError（Windows 多实例下，测试环境问题）。

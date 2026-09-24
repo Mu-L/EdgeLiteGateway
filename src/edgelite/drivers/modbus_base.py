@@ -147,6 +147,29 @@ def parse_modbus_address(raw: Any) -> tuple[str | None, int | None]:
     return None, None
 
 
+_READONLY_REGISTER_TYPES = frozenset({"input", "discrete"})
+
+
+def assert_modbus_point_writable(pt_def: dict) -> str | None:
+    """返回拒绝写入的原因文本；可写返回 None。
+
+    FIXED-JOINT: Modbus 的 IR（输入寄存器）与 DI（离散输入）是协议层只读区：
+    真实设备对这两区的写功能码（5/6/15/16）会返回异常，或被某些网关静默映射到
+    同号保持寄存器，造成"读 A 区、写 B 区"的静默数据破坏（联调实测：对 IR10
+    下写实际落在 HR10）。地址前缀已声明只读区、或点位 access_mode="r" 时拒绝。
+    纯数字地址（无前缀）保持既有行为不拦截。
+    """
+    reg_type = pt_def.get("register_type")
+    if reg_type in _READONLY_REGISTER_TYPES:
+        return (
+            f"read-only register area '{reg_type}' (address prefix IR/DI); "
+            "writable points must use HR/H or C/CO address prefix"
+        )
+    if str(pt_def.get("access_mode", "")).strip().lower() == "r":
+        return "point access_mode is 'r' (read-only)"
+    return None
+
+
 def normalize_modbus_point_def(pt_def: dict) -> dict:
     """归一化测点定义中的工业前缀地址（如 HR100/C0/IR10/DI5）。
 

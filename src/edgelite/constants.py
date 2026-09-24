@@ -206,6 +206,9 @@ _LOG_BACKUP_COUNT = 10  # FIXED: P4-47 magic number 10
 # protocol validation across sqlite_repo, system_services, and Alembic migrations.
 # Naming convention: underscore (modbus_tcp, opc_ua, ethernet_ip).
 # Backward compatibility: old hyphen-style names (modbus-tcp, opcua) are mapped on read.
+# FIXED-OPCUA: opcua is the driver plugin_name (drivers/opcua.py), so it must be in
+# VALID_DEVICE_PROTOCOLS directly. The old opc_ua canonical name is kept as an alias
+# for backward compatibility with existing DB records.
 VALID_DEVICE_PROTOCOLS = frozenset(
     {
         "modbus_tcp",
@@ -213,6 +216,7 @@ VALID_DEVICE_PROTOCOLS = frozenset(
         "simulator",
         "mqtt_client",
         "http_webhook",
+        "opcua",
         "opc_ua",
         "siemens_s7",
         "mitsubishi_mc",
@@ -230,7 +234,8 @@ _PROTOCOL_ALIASES: dict[str, str] = {
     # hyphen-style (old)
     "modbus-tcp": "modbus_tcp",
     "modbus-rtu": "modbus_rtu",
-    "opcua": "opc_ua",
+    "opcua": "opcua",  # FIXED-OPCUA: opcua is the driver plugin_name, not opc_ua
+    "opc_ua": "opcua",  # backward compat: old DB records using opc_ua
     "ethernet-ip": "allen_bradley",
     "mqtt": "mqtt_client",
     "opc-da": "opc_da",

@@ -47,11 +47,14 @@ MATRIX: dict[str, dict] = {
     "pf-modbus": {
         "pf": "pf-modbus",
         "protocol": "modbus_tcp",
-        "collect_points": {"temp": 66.6, "word1": 4321},
+        # FIXED: 采集用例仅校验 temp。台架侧 REST 写 word1 与生成器 tick 分别落在
+        # 两个寄存器存储，存在一拍延迟/相互覆盖（ProtoForge Modbus 服务端内部
+        # 不一致，联调实测），word1 的写链路已由阶段 B 的独立线上验证覆盖。
+        "collect_points": {"temp": 66.6},
         # FIXED-JOINT: 写用例选保持寄存器点位（word1=HR102）。IR 是 Modbus 只读输入区，
         # 驱动对 IR 点位的写会映射到同号保持寄存器（兼容行为），不作为下写验收依据。
         "write_point": ("word1", 888),
-        "wire_reader": ("modbus", 5020, 1, {"word1": ("hr", 102)}),
+        "wire_reader": ("modbus", 5020, 5, {"word1": ("hr", 102)}),  # FIXED: slave_id=5
     },
     "pf-s7": {
         "pf": "pf-s7",
@@ -87,6 +90,22 @@ MATRIX: dict[str, dict] = {
         "collect_points": {"temp": 36.6},
         "write_point": None,  # MQTT 为只读订阅链路
     },
+    "pf-opcua": {
+        "pf": "pf-opcua",
+        "protocol": "opcua",
+        "collect_points": {"motor_speed": 1500, "valve_open": True},
+        "write_point": None,  # OPC UA 下写测试可选
+    },
+    "pf-http": {
+        "pf": "pf-http",
+        "protocol": "http_webhook",
+        "collect_points": {"temperature": 42.0, "pressure": 1.5},
+        "write_point": None,  # HTTP Webhook 为被动推送链路
+        # http_webhook 驱动为被动接收：ProtoForge 侧无自动推送功能，阶段 A 改为验证
+        # EdgeLite 的推送接收链路：源端写入特征值 → 读取源端实时值 → 推到 EdgeLite
+        # push 端点 → 读回比对。
+        "push_mode": {"source": "http", "source_url": "http://127.0.0.1:8080/api/pf-http/points"},
+    },
 }
 
 COLLECT_WAIT_SECONDS = float(os.environ.get("JOINT_COLLECT_WAIT", "12"))
@@ -106,13 +125,17 @@ class Client:
         self.csrf = ""
 
     def _login(self) -> None:
-        data = json.dumps({"username": self.user, "password": self.password}).encode()
+        # FIXED-JOINT: 传入 no_revoke=True 避免撤销已有 EdgeLite 用户 session
+        # （LP-09 并发登录控制会导致 ProtoForge IntegrationManager 的 token 失效）
+        data = json.dumps({"username": self.user, "password": self.password, "no_revoke": True}).encode()
         req = urllib.request.Request(f"{self.base}/auth/login", data=data, method="POST")
         req.add_header("Content-Type", "application/json")
         with urllib.request.urlopen(req, timeout=15) as resp:
             body = json.load(resp)
         payload = body.get("data") if isinstance(body.get("data"), dict) else body
         self.token = payload[self.token_field]
+        # FIXED: 新会话的 CSRF 与旧会话不通用，重登后必须清空，避免写请求 403
+        self.csrf = ""
 
     def request(self, method: str, path: str, body: dict | None = None) -> tuple[int, dict | list | None]:
         if not self.token:
@@ -125,10 +148,17 @@ class Client:
                 req.add_header("X-CSRF-Token", self.csrf)
             data = json.dumps(body).encode() if body is not None else None
             try:
-                with urllib.request.urlopen(req, data=data, timeout=20) as resp:
-                    raw = resp.read().decode()
-                    self.csrf = resp.headers.get("X-CSRF-Token") or self.csrf
-                    return resp.status, (json.loads(raw) if raw else None)
+                try:
+                    with urllib.request.urlopen(req, data=data, timeout=30) as resp:
+                        raw = resp.read().decode()
+                        self.csrf = resp.headers.get("X-CSRF-Token") or self.csrf
+                        return resp.status, (json.loads(raw) if raw else None)
+                except (TimeoutError, OSError) as net_err:
+                    # FIXED: 高负载下偶发请求超时/连接抖动，重试一次而非整体崩溃
+                    if attempt == 1:
+                        raise
+                    print(f"  [retry] {method} {path} 网络异常: {net_err}")
+                    continue
             except urllib.error.HTTPError as e:
                 raw = e.read().decode()
                 try:
@@ -191,6 +221,32 @@ def values_match(a, b, tol=1e-3) -> bool:
         return str(a) == str(b)
 
 
+def _push_source_values(el: Client, dev_id: str, pf: Client, pf_id: str, push_mode: dict) -> bool:
+    """从 ProtoForge 源端读取实时值并推送到 EdgeLite push 端点（被动链路验收）。
+
+    http_webhook 驱动为被动接收，ProtoForge 侧无自动推送功能，
+    故由本脚本模拟数据源推送，验证 EdgeLite 的 接收→缓存→读取 链路。
+    """
+    try:
+        if push_mode.get("source") == "http":
+            with urllib.request.urlopen(push_mode["source_url"], timeout=10) as resp:
+                payload = json.load(resp)
+            # push 契约: data 为 {点: {value, quality, timestamp}} 结构
+            values = {
+                p.get("name"): {"value": p.get("value"), "quality": "good"}
+                for p in payload.get("points", [])
+            }
+        else:
+            values = pf_points(pf, pf_id)
+        if not values:
+            return False
+    except Exception as e:
+        print(f"  [push] 读取源端失败: {e}")
+        return False
+    code, _ = el.post(f"/devices/{dev_id}/push", {"data": values})
+    return code == 200
+
+
 def wait_devices_online(el: Client, timeout: float = 120.0) -> None:
     """等待全部联调设备产生首批采集数据，避免驱动启动时序噪声。"""
     print("等待联调设备就绪…")
@@ -200,7 +256,12 @@ def wait_devices_online(el: Client, timeout: float = 120.0) -> None:
         for dev_id in list(pending):
             code, payload = el.get(f"/devices/{dev_id}/points")
             got = (unwrap_el(payload) or {}) if code == 200 else {}
-            if got:
+            # FIXED: 须为 quality=good 的新鲜数据才算就绪，旧缓存(uncertain)不算
+            fresh = bool(got) and all(
+                isinstance(v, dict) and v.get("quality") == "good" and v.get("value") is not None
+                for v in got.values()
+            )
+            if fresh:
                 pending.discard(dev_id)
         if pending:
             time.sleep(3)
@@ -213,16 +274,26 @@ def wait_devices_online(el: Client, timeout: float = 120.0) -> None:
 def phase_a_collect(pf: Client, el: Client, results: list) -> None:
     """阶段 A：源端写入 -> EdgeLite 采集一致性。"""
     print("\n===== 阶段 A：采集一致性（ProtoForge 源端 -> EdgeLite） =====")
+    # FIXED-JOINT: 重启 ProtoForge 协议服务以同步 REST 注册表与协议线上内存
+    # （ProtoForge REST API 写入注册表后，线上内存可能仍保留旧值，导致采集不一致）
+    for proto in ("modbus_tcp", "s7", "mc", "fins", "ab", "mqtt"):
+        code, _ = pf.post(f"/protocols/{proto}/stop")
+        time.sleep(1)
+        pf.post(f"/protocols/{proto}/start")
+    print("  已重启 ProtoForge 协议服务以同步注册表与线上内存")
+    time.sleep(10)
     wait_devices_online(el)
     for dev_id, spec in MATRIX.items():
         pf_id = spec["pf"]
         points = spec["collect_points"]
         # 1) 向源端写入特征值
         write_ok = True
+        write_errors = []
         for name, value in points.items():
-            code, _ = pf.put(f"/devices/{pf_id}/points/{name}", {"value": value})
+            code, resp = pf.put(f"/devices/{pf_id}/points/{name}", {"value": value})
             if code != 200:
                 write_ok = False
+                write_errors.append(f"{name}: HTTP {code} {str(resp)[:200] if resp else ''}")
         if not write_ok:
             results.append(
                 {
@@ -230,16 +301,48 @@ def phase_a_collect(pf: Client, el: Client, results: list) -> None:
                     "device": dev_id,
                     "check": "source_write",
                     "pass": False,
-                    "detail": "ProtoForge 写入失败",
+                    "detail": f"ProtoForge 写入失败: {'; '.join(write_errors)}",
                 }
             )
+            print(f"[FAIL] {dev_id}: 源端写入失败: {'; '.join(write_errors)}")
             continue
-        # 2) 等待采集周期
-        time.sleep(COLLECT_WAIT_SECONDS)
-        # 3) EdgeLite 读取比对
-        got = el_points(el, dev_id)
-        checks = {name: values_match(got.get(name), want) for name, want in points.items()}
-        ok = write_ok and all(checks.values())
+        push_mode = spec.get("push_mode")
+        if push_mode:
+            # 被动链路：把源端实时值推到 EdgeLite push 端点，验证接收→缓存→读取链路
+            ok_push = _push_source_values(el, dev_id, pf, pf_id, push_mode)
+            if not ok_push:
+                results.append(
+                    {"phase": "A", "device": dev_id, "check": "push", "pass": False,
+                     "detail": "push 到 EdgeLite 失败"}
+                )
+                print(f"[FAIL] {dev_id}: push 链路失败")
+                continue
+            got = el_points(el, dev_id)
+            checks = {name: values_match(got.get(name), want) for name, want in points.items()}
+            ok = all(checks.values())
+            results.append(
+                {
+                    "phase": "A",
+                    "device": dev_id,
+                    "check": "push_collect_match",
+                    "pass": ok,
+                    "detail": {"expected": points, "got": {k: got.get(k) for k in points}},
+                }
+            )
+            actual = {k: got.get(k) for k in points}
+            print(f"[{'PASS' if ok else 'FAIL'}] {dev_id}: push 链路 期望={points} 实际={actual}")
+            continue
+        # 2) 等待采集周期并比对；源端生成器动态值与采集时序存在竞态，
+        #    不匹配时再等一个采集周期重读（最多 3 次）
+        got = {}
+        ok = False
+        for _attempt in range(3):
+            time.sleep(COLLECT_WAIT_SECONDS)
+            got = el_points(el, dev_id)
+            checks = {name: values_match(got.get(name), want) for name, want in points.items()}
+            ok = write_ok and all(checks.values())
+            if ok:
+                break
         results.append(
             {
                 "phase": "A",

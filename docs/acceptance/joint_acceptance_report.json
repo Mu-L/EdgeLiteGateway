@@ -1,7 +1,7 @@
 {
-  "started_at": "2026-09-23T22:40:30.734627",
-  "finished_at": "2026-09-23T22:42:56.467601",
-  "passed": 12,
+  "started_at": "2026-09-24T21:59:32.253642",
+  "finished_at": "2026-09-24T22:02:56.188513",
+  "passed": 14,
   "failed": 0,
   "results": [
     {
@@ -11,12 +11,10 @@
       "pass": true,
       "detail": {
         "expected": {
-          "temp": 66.6,
-          "word1": 4321
+          "temp": 66.6
         },
         "got": {
-          "temp": 66.599998,
-          "word1": 4321.0
+          "temp": 66.599998
         }
       }
     },
@@ -93,6 +91,38 @@
       }
     },
     {
+      "phase": "A",
+      "device": "pf-opcua",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "motor_speed": 1500,
+          "valve_open": true
+        },
+        "got": {
+          "motor_speed": 1500.0,
+          "valve_open": true
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-http",
+      "check": "push_collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "temperature": 42.0,
+          "pressure": 1.5
+        },
+        "got": {
+          "temperature": 42.0,
+          "pressure": 1.5
+        }
+      }
+    },
+    {
       "phase": "B",
       "device": "pf-modbus",
       "check": "write_readback",
@@ -159,15 +189,12 @@
           "pf-mc": {
             "status_code": 200,
             "is_connected": false,
-            "consecutive_failures": 5
+            "consecutive_failures": 2
           }
         },
         "after_recover": {
           "pf-mc": {
-            "d0": 999.0,
-            "f10": 0.0,
-            "m0": 0.0,
-            "m12": 0.0
+            "d0": 999.0
           }
         }
       }

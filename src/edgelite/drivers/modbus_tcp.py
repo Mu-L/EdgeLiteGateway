@@ -44,6 +44,7 @@ from edgelite.drivers.modbus_base import (
     _detect_slave_kwarg_name,
     _parse_modbus_exception,
     _set_client_slave_id,
+    assert_modbus_point_writable,
     normalize_modbus_point_def,
 )
 from edgelite.drivers.modbus_base import (
@@ -1506,6 +1507,12 @@ class ModbusTcpDriver(DriverPlugin):
 
             # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5）
             pt_def = normalize_modbus_point_def(pt_def)
+            # FIXED-JOINT: IR/DI 只读区与 access_mode="r" 拒绝下写，防静默跨区写
+            readonly_reason = assert_modbus_point_writable(pt_def)
+            if readonly_reason:
+                self._log_error(device_id, ModbusDriverErrors.WRITE_FAILED, f"{point}: {readonly_reason}")
+                self._audit_write(device_id, point, None, value, "rejected", readonly_reason)
+                return False
             address = int(pt_def.get("address", 0))
             data_type = pt_def.get("data_type", "float32")
             # 寄存器类型无需单独判断：写入路径按 data_type 分发（bool→write_coil，其余→write_register）
@@ -1744,6 +1751,18 @@ class ModbusTcpDriver(DriverPlugin):
                     continue
                 # FIXED-P0: 归一化工业前缀地址（HR100/C0/IR10/DI5）
                 pt_def = normalize_modbus_point_def(pt_def)
+                # FIXED-JOINT: 只读区点位在批量路径同样拒绝
+                readonly_reason = assert_modbus_point_writable(pt_def)
+                if readonly_reason:
+                    self._audit_write(
+                        device_id,
+                        point_name,
+                        self._last_values.get((device_id, point_name)),
+                        value,
+                        "rejected",
+                        readonly_reason,
+                    )
+                    continue
                 data_type = pt_def.get("data_type", "float32")
                 address = int(pt_def.get("address", 0))
                 if data_type == "bool":

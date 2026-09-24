@@ -662,6 +662,20 @@ class McDriver(DriverPlugin):
         for name in points:
             p = device_points.get(name, {})
             addr = p.get("address", name)  # Fall back to name if address not found
+            # FIXED-JOINT: 根据 data_type 在地址后添加类型后缀，使 _read_point 走正确的读取分支。
+            # 原问题：D100 无后缀时默认走 "word" 分支（读1个word），float32/uint16/bool 点位
+            # 无法正确读取（float32 只读了低16位，uint16 当有符号读，bool 当 word 读）。
+            data_type = p.get("data_type", "")
+            if "." not in addr:  # 不覆盖已有的后缀（如 D100.0 位访问）
+                if data_type in ("float32", "float", "real"):
+                    if not addr.upper().endswith((".F", ".FLOAT")):
+                        addr = f"{addr}.F"
+                elif data_type in ("int32", "uint32", "int32_t", "uint32_t", "long"):
+                    if not addr.upper().endswith((".L", ".LONG")):
+                        addr = f"{addr}.L"
+                elif data_type in ("uint16", "uint16_t", "word"):
+                    if not addr.upper().endswith((".U", ".UWORD")):
+                        addr = f"{addr}.U"
             addr_to_name[addr] = name
             read_addrs.append(addr)
 

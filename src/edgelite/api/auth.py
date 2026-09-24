@@ -388,6 +388,8 @@ async def login(req: LoginRequest, request: Request, db: DatabaseDep, audit_svc:
         )
 
         # LP-09: 并发登录控制 - 撤销该用户旧 session，注册新 session
+        # FIXED-JOINT: 当 no_revoke=True 时跳过撤销旧 session，仅注册新 session
+        # 这允许集成系统（如 ProtoForge）进行探测性登录而不撤销已有用户 session
         import warnings
 
         from edgelite.security.jwt import decode_token
@@ -407,19 +409,32 @@ async def login(req: LoginRequest, request: Request, db: DatabaseDep, audit_svc:
         # FIXED(一般): 原问题-session注册失败后继续返回token，用户拿到token后所有API调用401;
         # 修复-确保新jti注册成功，注册失败则返回500
         if new_jtis:
-            try:
-                await revoke_old_sessions(user["user_id"], new_jtis)
-            except Exception as e:
-                logger.warning("LP-09: Failed to revoke old sessions for user %s: %s", user["user_id"], e)
-                # 即使撤销旧session失败，也要确保新jti已注册
+            if not req.no_revoke:
+                try:
+                    await revoke_old_sessions(user["user_id"], new_jtis)
+                except Exception as e:
+                    logger.warning("LP-09: Failed to revoke old sessions for user %s: %s", user["user_id"], e)
+                    # 即使撤销旧session失败，也要确保新jti已注册
+                    from edgelite.security.session_manager import register_session
+
+                    for jti in new_jtis:
+                        try:
+                            register_session(user["user_id"], jti)
+                        except Exception as exc:  # FIXED(P2): 原问题-B904异常链丢失; 修复-添加as exc与from exc
+                            logger.error(
+                                "LP-09: Failed to register new session, login will fail for user %s", user["user_id"]
+                            )
+                            raise HTTPException(status_code=500, detail="Session registration failed") from exc
+            else:
+                # FIXED-JOINT: no_revoke=True 时仅注册新 session，不撤销旧 session
                 from edgelite.security.session_manager import register_session
 
                 for jti in new_jtis:
                     try:
                         register_session(user["user_id"], jti)
-                    except Exception as exc:  # FIXED(P2): 原问题-B904异常链丢失; 修复-添加as exc与from exc
+                    except Exception as exc:
                         logger.error(
-                            "LP-09: Failed to register new session, login will fail for user %s", user["user_id"]
+                            "Session registration failed (no_revoke mode) for user %s: %s", user["user_id"], exc
                         )
                         raise HTTPException(status_code=500, detail="Session registration failed") from exc
 

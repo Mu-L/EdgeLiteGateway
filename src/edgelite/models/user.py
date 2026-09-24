@@ -69,6 +69,9 @@ class LoginRequest(BaseModel):
 
     username: str = Field(min_length=1, max_length=32)
     password: str = Field(min_length=1, max_length=72)
+    # FIXED-JOINT: 集成联调用 no_revoke=True 避免撤销已有 session
+    # ProtoForge test_connection 等探测性登录不应导致已登录用户 token 失效
+    no_revoke: bool = Field(default=False, description="Skip revoking existing sessions (for integration probes)")
 
 
 class TokenResponse(BaseModel):

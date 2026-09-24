@@ -78,7 +78,7 @@ def register_session(user_id: str, jti: str, expires_at: float | None = None) ->
     db_path = _get_db_path()
     if db_path:
         try:
-            conn = sqlite3.connect(db_path, timeout=5)
+            conn = sqlite3.connect(db_path, timeout=10)
             try:
                 _ensure_table(conn)
                 conn.execute(
@@ -92,10 +92,16 @@ def register_session(user_id: str, jti: str, expires_at: float | None = None) ->
             finally:
                 conn.close()
         except Exception as e:
-            logger.warning("Failed to persist session for user %s: %s", user_id, e)
-            return  # SQLite 失败则不更新内存，保持内存与 SQLite 一致
+            # FIXED-JOINT: 采集引擎高负载下 SQLite 频繁短暂锁表，会话注册失败曾直接
+            # 放弃内存注册 → 登录返回的 token 立即失效，登录服务在负载下近乎不可用
+            # （联调实测：database is locked → 登录后 401）。现降级为内存模式并告警：
+            # 会话本进程内有效，重启后需重新登录——优于登录不可用。
+            logger.warning(
+                "Failed to persist session for user %s (%s); degrading to in-memory session",
+                user_id, e,
+            )
 
-    # 内存后: SQLite 成功后才更新内存
+    # 内存注册: SQLite 成功后照常；SQLite 失败则降级为仅内存
     with _lock:
         if user_id not in _active_sessions:
             _active_sessions[user_id] = set()
@@ -122,7 +128,7 @@ def remove_session(user_id: str, jti: str) -> None:
     db_path = _get_db_path()
     if db_path:
         try:
-            conn = sqlite3.connect(db_path, timeout=5)
+            conn = sqlite3.connect(db_path, timeout=10)
             try:
                 _ensure_table(conn)
                 conn.execute("DELETE FROM user_sessions WHERE jti = ?", (jti,))
@@ -192,7 +198,7 @@ def clear_user_sessions(user_id: str) -> list[str]:
     db_path = _get_db_path()
     if db_path:
         try:
-            conn = sqlite3.connect(db_path, timeout=5)
+            conn = sqlite3.connect(db_path, timeout=10)
             try:
                 _ensure_table(conn)
                 conn.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
@@ -247,7 +253,7 @@ async def revoke_old_sessions(user_id: str, new_jtis: list[str]) -> None:
     db_path = _get_db_path()
     if db_path:
         try:
-            conn = sqlite3.connect(db_path, timeout=5)
+            conn = sqlite3.connect(db_path, timeout=10)
             try:
                 _ensure_table(conn)
                 # DELETE 旧会话
@@ -266,8 +272,12 @@ async def revoke_old_sessions(user_id: str, new_jtis: list[str]) -> None:
             finally:
                 conn.close()
         except Exception as e:
-            logger.warning("Failed to revoke old sessions for user %s: %s", user_id, e)
-            return  # SQLite 失败则不更新内存，保持旧 session 活跃 (一致性优先)
+            # FIXED-JOINT: 同 register_session —— SQLite 短暂锁表时降级为内存模式，
+            # 不阻断登录流程（否则负载下旧会话撤销/新会话持久化失败 → 登录后 401）
+            logger.warning(
+                "Failed to revoke old sessions for user %s (%s); degrading to in-memory sessions",
+                user_id, e,
+            )
 
     # 内存后: SQLite 成功后才更新 (用新会话集替换旧会话集)
     with _lock:

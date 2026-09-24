@@ -1579,7 +1579,11 @@ async def get_device_health(
         data = await svc.get_device_health(device_id)
         if data is None:
             raise HTTPException(status_code=404, detail=DeviceErrors.NOT_FOUND)
-        return ApiResponse(data=data)
+        # FIXED-JOINT: 部分驱动（如 http_webhook）健康统计缺数值字段、以 None 填充，
+        # 直接透传会触发 ResponseValidationError → 500。剔除 None 后由模型默认值兜底，
+        # 健康接口对任何协议驱动都必须可用。
+        clean = {k: v for k, v in data.items() if v is not None}
+        return ApiResponse(data=DeviceHealthResponse.model_validate(clean))
     except HTTPException:
         raise
     except Exception as e:
