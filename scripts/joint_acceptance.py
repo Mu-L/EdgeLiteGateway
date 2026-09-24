@@ -128,19 +128,31 @@ class Client:
         # FIXED-JOINT: 传入 no_revoke=True 避免撤销已有 EdgeLite 用户 session
         # （LP-09 并发登录控制会导致 ProtoForge IntegrationManager 的 token 失效）
         data = json.dumps({"username": self.user, "password": self.password, "no_revoke": True}).encode()
-        req = urllib.request.Request(f"{self.base}/auth/login", data=data, method="POST")
-        req.add_header("Content-Type", "application/json")
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = json.load(resp)
-        payload = body.get("data") if isinstance(body.get("data"), dict) else body
-        self.token = payload[self.token_field]
+        last: Exception | None = None
+        for i in range(3):
+            req = urllib.request.Request(f"{self.base}/auth/login", data=data, method="POST")
+            req.add_header("Content-Type", "application/json")
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    body = json.load(resp)
+                payload = body.get("data") if isinstance(body.get("data"), dict) else body
+                self.token = payload[self.token_field]
+                # FIXED: 新会话的 CSRF 与旧会话不通用，重登后必须清空，避免写请求 403
+                self.csrf = ""
+                return
+            except OSError as e:
+                # 登录写会话/审计在高负载下可能长时间阻塞，重试而非整体崩溃
+                last = e
+                time.sleep(3 * (i + 1))
+        raise last if last else RuntimeError("login failed")
         # FIXED: 新会话的 CSRF 与旧会话不通用，重登后必须清空，避免写请求 403
         self.csrf = ""
 
     def request(self, method: str, path: str, body: dict | None = None) -> tuple[int, dict | list | None]:
         if not self.token:
             self._login()
-        for attempt in (1, 2):
+        last_err: Exception | None = None
+        for attempt in (1, 2, 3):
             req = urllib.request.Request(f"{self.base}{path}", method=method)
             req.add_header("Authorization", f"Bearer {self.token}")
             req.add_header("Content-Type", "application/json")
@@ -149,26 +161,30 @@ class Client:
             data = json.dumps(body).encode() if body is not None else None
             try:
                 try:
-                    with urllib.request.urlopen(req, data=data, timeout=30) as resp:
+                    with urllib.request.urlopen(req, data=data, timeout=45) as resp:
                         raw = resp.read().decode()
                         self.csrf = resp.headers.get("X-CSRF-Token") or self.csrf
                         return resp.status, (json.loads(raw) if raw else None)
                 except (TimeoutError, OSError) as net_err:
-                    # FIXED: 高负载下偶发请求超时/连接抖动，重试一次而非整体崩溃
-                    if attempt == 1:
-                        raise
-                    print(f"  [retry] {method} {path} 网络异常: {net_err}")
-                    continue
+                    # FIXED: 高负载下偶发请求超时/连接抖动，指数退避重试而非整体崩溃
+                    last_err = net_err
+                    if attempt < 3:
+                        print(f"  [retry {attempt}] {method} {path} 网络异常: {net_err}")
+                        time.sleep(2 * attempt)
+                        continue
+                    raise
             except urllib.error.HTTPError as e:
                 raw = e.read().decode()
                 try:
                     payload = json.loads(raw)
                 except json.JSONDecodeError:
                     payload = {"raw": raw[:200]}
-                if e.code == 401 and attempt == 1:
+                if e.code == 401 and attempt < 3:
                     self._login()
                     continue
                 return e.code, payload
+        if last_err:
+            raise last_err
         raise RuntimeError("unreachable")
 
     def get(self, path: str):
@@ -565,10 +581,17 @@ def main() -> int:
     results: list[dict] = []
     started = datetime.now().isoformat()
 
-    # 前置健康检查（健康端点无需认证，直接探测）
+    # 前置健康检查（健康端点无需认证，直接探测；启动期可能超时，重试 3 次）
     def probe(url: str) -> int:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            return resp.status
+        last: Exception | None = None
+        for _i in range(3):
+            try:
+                with urllib.request.urlopen(url, timeout=30) as resp:
+                    return resp.status
+            except OSError as e:
+                last = e
+                time.sleep(5)
+        raise last if last else RuntimeError("probe failed")
 
     for name, url in (("ProtoForge", f"{PF}/health"), ("EdgeLite", f"{EL.rsplit('/api/v1', 1)[0]}/health/ready")):
         try:

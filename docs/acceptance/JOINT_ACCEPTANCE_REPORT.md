@@ -142,6 +142,8 @@ ProtoForge 侧：协议相关子集 86 passed；`test_edgelite_config_has_correc
    `.venv-ci` 解释器。三个 EdgeLite 联调测试文件 64/64 通过。
 3. **MQTT 主题适配**：ProtoForge pf-mqtt 的 topic_prefix 被移除后发布主题变为
    `pf-mqtt/temp`；EdgeLite 侧订阅改 `#`（负载自描述 device_id/point 路由不依赖主题）。
+   venv 内 starlette 曾漂移至 1.6.0（lock 为 1.3.1），已回退对齐；fastapi 0.141.1
+   与 lock 0.139.0 在本缺陷上行为一致，与 starlette 版本无关。
 4. **验收脚本健壮性**：重登后重置 CSRF、网络抖动重试、阶段 A 竞态重读（3 次）、
    就绪判定要求 quality=good。
 
@@ -152,8 +154,16 @@ ProtoForge 侧：协议相关子集 86 passed；`test_edgelite_config_has_correc
    （联调实测：REST 写 9999 后线上探针读到的仍是生成器动态值）。EdgeLite 侧 word1
    的写链路正确性由阶段 B 独立线上验证覆盖；阶段 A 采集用例收敛到生成器同步稳定的
    temp 点。
-2. **resource-shares REST 422**：`GET/POST /api/v1/resource-shares` 返回
-   "query -> func: Field required"（疑似被带 func 查询参数的路由劫持），共享需直接
-   写 resource_shares 表。待查路由注册顺序。
-3. `test_real_machine_joint` 的 EdgeLite 子进程与常驻实例共用 `data/logs/edgelite.log`
+2. **resource-shares REST 422（上游 FastAPI 缺陷）**：全量应用下
+   `POST/GET /api/v1/resource-shares` 返回 "query -> func: Field required"；带
+   `?func=1` 则 500（`run_in_threadpool() got multiple values for argument 'func'`）。
+   最小复现（仅挂载 resource_shares 路由）正常，随挂载路由增多复现——为 FastAPI
+   0.139.0/0.141.1 惰性路由（`_IncludedRouter`）跨路由依赖错配，starlette 1.3.1 与
+   1.6.0 均复现，版本对齐无法规避。当前共享经 resource_shares 表直写供应；建议向上游
+   报告或等待修复。
+3. **pf-opcua 阶段 A 时序抖动**：ProtoForge OPC-UA 节点为显式 `ns=2;s=<点名>` 地址
+   （无设备前缀）；REST 写入 OPC-UA 点位存在不落到节点值的情况（写 1500 后订阅仍投递
+   旧值 2222），导致阶段 A 偶发不匹配。EdgeLite 侧订阅→缓存→读取链路已验证正常
+   （2222 端到端投递成功）。重跑验收即可通过。
+4. `test_real_machine_joint` 的 EdgeLite 子进程与常驻实例共用 `data/logs/edgelite.log`
    导致日志轮转 PermissionError（Windows 多实例下，测试环境问题）。
