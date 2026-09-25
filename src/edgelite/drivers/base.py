@@ -1211,6 +1211,15 @@ class DriverPlugin(ABC):
         port_keys = ["port"]
         for key in port_keys:
             if key in config:
+                # FIXED-JOINT: 尊重 config_schema 的声明类型。串口驱动（modbus_rtu 等）
+                # 的 "port" 是设备路径（COM1 / /dev/ttyUSB0），schema 声明为 string，
+                # 原实现一律按 TCP 端口整数校验导致 RTU 设备无法通过 REST 创建
+                # （联调实测：ERR_DEVICE_CONFIG_INVALID: Field 'port' must be an integer）。
+                declared_type = (self.config_schema.get("properties", {}).get(key, {}) or {}).get("type")
+                if declared_type == "string":
+                    if not str(config[key] or "").strip():
+                        errors.append(f"Field '{key}' must be a non-empty device path")
+                    continue
                 try:
                     port = int(config[key])
                     if not (1 <= port <= 65535):
