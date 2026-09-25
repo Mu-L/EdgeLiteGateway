@@ -1,0 +1,203 @@
+{
+  "started_at": "2026-09-24T22:02:38.316919",
+  "finished_at": "2026-09-24T22:06:26.143995",
+  "passed": 14,
+  "failed": 0,
+  "results": [
+    {
+      "phase": "A",
+      "device": "pf-modbus",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "temp": 66.6
+        },
+        "got": {
+          "temp": 66.599998
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-s7",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "temp": 12.5,
+          "word1": 1000
+        },
+        "got": {
+          "temp": 12.5,
+          "word1": 1000.0
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-mc",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "d0": 555
+        },
+        "got": {
+          "d0": 555.0
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-fins",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "w0": 1234
+        },
+        "got": {
+          "w0": 1234.0
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-ab",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "Temperature": 26.5
+        },
+        "got": {
+          "Temperature": 26.5
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-mqtt",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "temp": 36.6
+        },
+        "got": {
+          "temp": 36.6
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-opcua",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "motor_speed": 1500,
+          "valve_open": true
+        },
+        "got": {
+          "motor_speed": 1500.0,
+          "valve_open": true
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-http",
+      "check": "push_collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "temperature": 42.0,
+          "pressure": 1.5
+        },
+        "got": {
+          "temperature": 42.0,
+          "pressure": 1.5
+        }
+      }
+    },
+    {
+      "phase": "B",
+      "device": "pf-modbus",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 888,
+        "wire_value": 888,
+        "error": null
+      }
+    },
+    {
+      "phase": "B",
+      "device": "pf-s7",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 888,
+        "wire_value": 888,
+        "error": null
+      }
+    },
+    {
+      "phase": "B",
+      "device": "pf-mc",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 999,
+        "wire_value": 999,
+        "error": null
+      }
+    },
+    {
+      "phase": "B",
+      "device": "pf-fins",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 4321,
+        "wire_value": 4321,
+        "error": null
+      }
+    },
+    {
+      "phase": "B",
+      "device": "pf-ab",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 50,
+        "wire_value": 50.0,
+        "error": null
+      }
+    },
+    {
+      "phase": "C",
+      "device": [
+        "pf-mc"
+      ],
+      "check": "fault_detect_and_recover",
+      "pass": true,
+      "detail": {
+        "during_fault": {
+          "pf-mc": {
+            "status_code": 200,
+            "is_connected": false,
+            "consecutive_failures": 4
+          }
+        },
+        "after_recover": {
+          "pf-mc": {
+            "d0": 999.0
+          }
+        }
+      }
+    }
+  ]
+}
