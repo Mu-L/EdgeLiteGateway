@@ -106,6 +106,20 @@ scripts/cleanup_test_devices.py
 scripts/clear_rate_limit.py
 scripts/full_cleanup.py
 
+# ---------- ProtoForge 联调临时诊断/修复脚本（一次性产物，不纳入版本控制） ----------
+scripts/diagnose*.py
+scripts/fix_all*.py
+scripts/fix_final.py
+scripts/fix_http_push.py
+scripts/fix_mqtt.py
+scripts/fix_opcua_http.py
+scripts/fix_pf_points.py
+scripts/fix_remaining.py
+scripts/check_integration.py
+scripts/check_mqtt.py
+scripts/check_mqtt_flow.py
+scripts/browse_opcua.py
+
 # ---------- 临时文件 ----------
 aa.txt
 

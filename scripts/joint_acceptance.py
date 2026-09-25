@@ -54,7 +54,7 @@ MATRIX: dict[str, dict] = {
         # FIXED-JOINT: 写用例选保持寄存器点位（word1=HR102）。IR 是 Modbus 只读输入区，
         # 驱动对 IR 点位的写会映射到同号保持寄存器（兼容行为），不作为下写验收依据。
         "write_point": ("word1", 888),
-        "wire_reader": ("modbus", 5020, 5, {"word1": ("hr", 102)}),  # FIXED: slave_id=5
+        "wire_reader": ("modbus", "127.0.0.1", 5020, 5, {"word1": ("hr", 102)}),  # FIXED: slave_id=5
     },
     "pf-s7": {
         "pf": "pf-s7",
@@ -84,6 +84,17 @@ MATRIX: dict[str, dict] = {
         "write_point": ("Setpoint", 50),
         "wire_reader": ("pylogix", 44818, {"Setpoint": "Setpoint"}),
     },
+    "pf-rtu": {
+        "pf": "pf-rtu", "protocol": "modbus_rtu",
+        # FIXED-JOINT: TCP-RTU 网关（串口服务器）拓扑——无 com0com 串口对时，
+        # ProtoForge RTU 服务端降级为 TCP bridge（0.0.0.0:5021；本机 EdgeLite
+        # modbus_slave 占 127.0.0.1:5021 特定绑定，须用 LAN IP 命中网桥），
+        # EdgeLite 走 tcp_gateway 模式，即现场"RTU 设备挂串口服务器"的标准形态。
+        "collect_points": {"reg0": 2222},
+        "write_point": ("reg0", 777),
+        "wire_reader": ("modbus", os.environ.get("EL_RTU_GATEWAY_HOST", "192.168.101.104"),
+                        5021, 1, {"reg0": ("hr", 0)}),
+    },
     "pf-mqtt": {
         "pf": "pf-mqtt",
         "protocol": "mqtt_client",
@@ -94,7 +105,10 @@ MATRIX: dict[str, dict] = {
         "pf": "pf-opcua",
         "protocol": "opcua",
         "collect_points": {"motor_speed": 1500, "valve_open": True},
-        "write_point": None,  # OPC UA 下写测试可选
+        # FIXED-JOINT: 驱动按设备配置 data_type(int32) 发类型化写，与台架节点类型匹配
+        "write_point": ("motor_speed", 777),
+        "wire_reader": ("asyncua", "opc.tcp://127.0.0.1:4840/protoforge",
+                        {"motor_speed": "ns=2;s=motor_speed"}),
     },
     "pf-http": {
         "pf": "pf-http",
@@ -248,10 +262,7 @@ def _push_source_values(el: Client, dev_id: str, pf: Client, pf_id: str, push_mo
             with urllib.request.urlopen(push_mode["source_url"], timeout=10) as resp:
                 payload = json.load(resp)
             # push 契约: data 为 {点: {value, quality, timestamp}} 结构
-            values = {
-                p.get("name"): {"value": p.get("value"), "quality": "good"}
-                for p in payload.get("points", [])
-            }
+            values = {p.get("name"): {"value": p.get("value"), "quality": "good"} for p in payload.get("points", [])}
         else:
             values = pf_points(pf, pf_id)
         if not values:
@@ -274,8 +285,7 @@ def wait_devices_online(el: Client, timeout: float = 120.0) -> None:
             got = (unwrap_el(payload) or {}) if code == 200 else {}
             # FIXED: 须为 quality=good 的新鲜数据才算就绪，旧缓存(uncertain)不算
             fresh = bool(got) and all(
-                isinstance(v, dict) and v.get("quality") == "good" and v.get("value") is not None
-                for v in got.values()
+                isinstance(v, dict) and v.get("quality") == "good" and v.get("value") is not None for v in got.values()
             )
             if fresh:
                 pending.discard(dev_id)
@@ -328,8 +338,7 @@ def phase_a_collect(pf: Client, el: Client, results: list) -> None:
             ok_push = _push_source_values(el, dev_id, pf, pf_id, push_mode)
             if not ok_push:
                 results.append(
-                    {"phase": "A", "device": dev_id, "check": "push", "pass": False,
-                     "detail": "push 到 EdgeLite 失败"}
+                    {"phase": "A", "device": dev_id, "check": "push", "pass": False, "detail": "push 到 EdgeLite 失败"}
                 )
                 print(f"[FAIL] {dev_id}: push 链路失败")
                 continue
@@ -382,9 +391,9 @@ def wire_read(reader: tuple, point: str):
     if kind == "modbus":
         from pymodbus.client import ModbusTcpClient
 
-        _, port, slave, regs = reader
+        _, host, port, slave, regs = reader
         spec = regs[point]
-        cli = ModbusTcpClient("127.0.0.1", port=port)
+        cli = ModbusTcpClient(host, port=port)
         try:
             cli.connect()
             if spec[0] == "hr":
@@ -449,6 +458,16 @@ def wire_read(reader: tuple, point: str):
             return int.from_bytes(r[22:24], "big") if len(r) >= 24 else None
         finally:
             s.close()
+    if kind == "asyncua":
+        import asyncio
+
+        async def _ua_read():
+            from asyncua import Client
+            _, endpoint, tags = reader
+            async with Client(url=endpoint) as c:
+                return await c.get_node(tags[point]).read_value()
+
+        return asyncio.run(_ua_read())
     if kind == "pylogix":
         from pylogix import PLC
 
