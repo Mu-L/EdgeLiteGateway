@@ -256,7 +256,13 @@ def _validate_modbus_config(config: dict, protocol: str) -> None:
         _validate_dns_resolution(host, "config.host")
 
     port = config.get("port")
-    if port is not None and (not isinstance(port, int) or not (1 <= port <= 65535)):
+    # FIXED-JOINT: modbus_rtu 的 "port" 是串口设备路径（COM1 / /dev/ttyUSB0，驱动
+    # config_schema 声明为 string），此前一律按 TCP 端口整数校验导致 RTU 设备无法
+    # 通过 REST 创建。仅 TCP 语义的协议保留整数端口校验。
+    if protocol == "modbus_rtu":
+        if port is not None and not isinstance(port, str):
+            raise ValueError(f"config.port must be a serial device path str for modbus_rtu, got {port!r}")
+    elif port is not None and (not isinstance(port, int) or not (1 <= port <= 65535)):
         raise ValueError(f"config.port must be int in [1, 65535], got {port!r}")
 
     unit_id = config.get("unit_id") or config.get("slave_id")
@@ -273,13 +279,20 @@ def _validate_modbus_config(config: dict, protocol: str) -> None:
 
     # RTU-specific: serial_port
     if protocol == "modbus_rtu":
-        serial_port = config.get("serial_port") or config.get("port_name")
-        if serial_port is None or (
-            isinstance(serial_port, str) and not serial_port.strip()
-        ):  # FIXED-P2: 原问题-RTU协议serial_port允许None入库；改为强制非空
-            raise ValueError("config.serial_port is required for modbus_rtu and must be non-empty str")
-        if not isinstance(serial_port, str):
+        # FIXED-JOINT: 串口路径键与驱动 schema 对齐——驱动用 "port"（兼容旧
+        # serial_port/port_name 键）；tcp_gateway（串口服务器/TCP-RTU 网关）模式下
+        # 允许省略串口路径，仅校验网关地址。
+        serial_port = config.get("serial_port") or config.get("port_name") or config.get("port")
+        tcp_gateway = config.get("tcp_gateway")
+        if not isinstance(tcp_gateway, dict) or not tcp_gateway.get("host"):
+            if serial_port is None or (
+                isinstance(serial_port, str) and not serial_port.strip()
+            ):  # FIXED-P2: 原问题-RTU协议serial_port允许None入库；改为强制非空
+                raise ValueError("config.serial_port is required for modbus_rtu and must be non-empty str")
+        if serial_port is not None and not isinstance(serial_port, str):
             raise ValueError(f"config.serial_port must be str, got {type(serial_port).__name__}")
+        if tcp_gateway is not None and (not isinstance(tcp_gateway, dict) or not tcp_gateway.get("host")):
+            raise ValueError("config.tcp_gateway must be a dict with non-empty 'host'")
         baud = config.get("baudrate") or config.get("baud")
         if baud is not None and (not isinstance(baud, int) or baud <= 0):
             raise ValueError(f"config.baudrate must be positive int, got {baud!r}")
