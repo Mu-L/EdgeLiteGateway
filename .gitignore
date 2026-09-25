@@ -215,3 +215,4 @@ mypy_out.txt
 /test_ci_result.txt
 /test_job_log.txt
 /test-results/
+/scripts/_*.ps1
