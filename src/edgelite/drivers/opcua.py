@@ -1614,7 +1614,9 @@ class OpcUaDriver(DriverPlugin):
             return {}
         return self._audit.get_stats()
 
-    async def _apply_point_preprocess(self, device_id: str, point_name: str, value: Any, quality: str) -> PointValue:
+    async def _apply_point_preprocess(
+        self, device_id: str, point_name: str, value: Any, quality: str, *, from_subscription: bool = False
+    ) -> PointValue:
         now = datetime.now(UTC)
         now_ts = time.monotonic()
         ph = self._get_point_health(device_id, point_name)
@@ -1627,7 +1629,12 @@ class OpcUaDriver(DriverPlugin):
             ph.record_failure()
             return PointValue(value=None, quality="bad", timestamp=now, source=f"opcua:{OpcUaDriverErrors.NAN_INF}")
 
-        if self._check_stale_data(device_id, point_name):
+        # FIXED-JOINT: staleness 守卫仅适用于订阅缓存值。直读（read_value/
+        # read_multiple_values）刚刚从服务器取回数据，本身就是新鲜度的权威证明；
+        # 对静态值设备（写一次不再变化，如设定点/状态量）永远不会有新的推送，
+        # 原实现对直读结果也套用"1.5s 无推送即陈旧"导致这类设备恒返回 uncertain
+        # （联调实测 ProtoForge OPC-UA 点位全部被误杀）。
+        if from_subscription and self._check_stale_data(device_id, point_name):
             # FIXED: 陈旧数据检测命中时提前 return，不调用 record_success() 以避免重置陈旧计时器
             return PointValue(
                 value=None, quality="uncertain", timestamp=now, source=f"opcua:{OpcUaDriverErrors.STALE_DATA}"
@@ -2728,7 +2735,11 @@ class OpcUaDriver(DriverPlugin):
                 )
                 return True
             try:
-                state = client.session_state
+                # FIXED-JOINT: asyncua 2.x 的 Client 没有 session_state 属性，直接访问
+                # 恒抛 AttributeError → keepalive 必败 → 会话被误判过期 → 点位全标 bad、
+                # 无限重建（联调实测 pf-opcua 采集时好时坏的根因）。
+                # 属性缺失时视为活跃，真实存活性由下一行的 browse_name 网络读保证。
+                state = getattr(client, "session_state", 1)
                 if state != 1:
                     self._log_error(device_id, "SESSION_EXPIRED", f"msg=Session state={state}", level=logging.WARNING)
                     async with self._session_locks[device_id]:
@@ -3830,7 +3841,9 @@ class _SubHandler:
                     pv = PointValue(value=resolved_val, quality=quality, timestamp=now, source="subscribed")
 
             if quality != "bad":
-                pv = await self._driver._apply_point_preprocess(self.device_id, point_name, pv.value, quality)
+                pv = await self._driver._apply_point_preprocess(
+                    self.device_id, point_name, pv.value, quality, from_subscription=True
+                )
 
         async with self._values_lock:
             self._latest_values.setdefault(self.device_id, {})[point_name] = pv

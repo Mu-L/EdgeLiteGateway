@@ -1,8 +1,8 @@
 {
-  "started_at": "2026-09-24T23:18:26.834206",
-  "finished_at": "2026-09-24T23:23:13.241120",
-  "passed": 13,
-  "failed": 1,
+  "started_at": "2026-09-25T09:10:45.419218",
+  "finished_at": "2026-09-25T09:15:16.160990",
+  "passed": 14,
+  "failed": 0,
   "results": [
     {
       "phase": "A",
@@ -94,14 +94,14 @@
       "phase": "A",
       "device": "pf-opcua",
       "check": "collect_match",
-      "pass": false,
+      "pass": true,
       "detail": {
         "expected": {
           "motor_speed": 1500,
           "valve_open": true
         },
         "got": {
-          "motor_speed": 2222.0,
+          "motor_speed": 1500.0,
           "valve_open": true
         }
       }
@@ -189,7 +189,7 @@
           "pf-mc": {
             "status_code": 200,
             "is_connected": false,
-            "consecutive_failures": 2
+            "consecutive_failures": 5
           }
         },
         "after_recover": {

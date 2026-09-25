@@ -119,7 +119,7 @@ ProtoForge 侧：协议相关子集 86 passed；`test_edgelite_config_has_correc
 
 | 阶段 | 结果 |
 |---|---|
-| A 采集一致性（modbus/s7/mc/fins/ab/mqtt/**opcua**） | 7/7 PASS |
+| A 采集一致性（modbus/s7/mc/fins/ab/mqtt/**opcua**） | 7/7 PASS（第三轮修复 E13/E14 后） |
 | A HTTP 推送接收链路（webhook 被动接收验证） | 1/1 PASS |
 | B 下写链路（独立线上客户端验证） | 5/5 PASS |
 | C 故障注入与恢复 | PASS |
@@ -161,9 +161,11 @@ ProtoForge 侧：协议相关子集 86 passed；`test_edgelite_config_has_correc
    0.139.0/0.141.1 惰性路由（`_IncludedRouter`）跨路由依赖错配，starlette 1.3.1 与
    1.6.0 均复现，版本对齐无法规避。当前共享经 resource_shares 表直写供应；建议向上游
    报告或等待修复。
-3. **pf-opcua 阶段 A 时序抖动**：ProtoForge OPC-UA 节点为显式 `ns=2;s=<点名>` 地址
-   （无设备前缀）；REST 写入 OPC-UA 点位存在不落到节点值的情况（写 1500 后订阅仍投递
-   旧值 2222），导致阶段 A 偶发不匹配。EdgeLite 侧订阅→缓存→读取链路已验证正常
-   （2222 端到端投递成功）。重跑验收即可通过。
+3. **pf-opcua 已修复（E13/E14，EdgeLite 驱动缺陷）**：阶段 A 曾时序抖动，第三轮联调
+   定位为 EdgeLite OPC-UA 驱动两处真缺陷并修复——(a) keepalive 访问 asyncua 2.x 不存在的
+   `client.session_state` 属性恒抛异常 → 会话被误判过期无限重建；(b) staleness 守卫
+   （1.5s 无订阅推送即判陈旧）错误地作用于**直读**结果，静态值设备（设定点/状态量，
+   写一次不再变化）的直读恒被误杀为 uncertain。修复后静态值重复直读稳定 good，
+   最终验收 14/14 全通过。
 4. `test_real_machine_joint` 的 EdgeLite 子进程与常驻实例共用 `data/logs/edgelite.log`
    导致日志轮转 PermissionError（Windows 多实例下，测试环境问题）。

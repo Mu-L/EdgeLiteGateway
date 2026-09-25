@@ -1259,12 +1259,23 @@ class TestApplyPointPreprocess:
         assert pv.value == 50
 
     async def test_stale_data_returns_uncertain(self, driver):
+        # FIXED-JOINT: staleness 守卫仅作用于订阅路径（from_subscription=True）。
+        # 直读刚刚从服务器取回数据，本身就是新鲜度证明，静态值设备（无推送）
+        # 的直读必须返回 good，否则设定点/状态量类点位恒 uncertain。
+        ph = driver._get_point_health("dev1", "p1")
+        ph.last_publish_at = time.monotonic() - 100
+        driver._device_configs["dev1"] = {"subscription_interval": 500}
+        pv = await driver._apply_point_preprocess("dev1", "p1", 42, "good", from_subscription=True)
+        assert pv.quality == "uncertain"
+        assert pv.value is None
+
+    async def test_stale_direct_read_returns_good(self, driver):
         ph = driver._get_point_health("dev1", "p1")
         ph.last_publish_at = time.monotonic() - 100
         driver._device_configs["dev1"] = {"subscription_interval": 500}
         pv = await driver._apply_point_preprocess("dev1", "p1", 42, "good")
-        assert pv.quality == "uncertain"
-        assert pv.value is None
+        assert pv.quality == "good"
+        assert pv.value == 42
 
 
 # ════════════════════════════════════════════════════════════════════════

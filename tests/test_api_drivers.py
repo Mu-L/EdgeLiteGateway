@@ -58,7 +58,22 @@ def _make_registry(
     reg = MagicMock()
     reg._drivers = drivers or {}
     reg.items.return_value = list((drivers or {}).items())
-    reg.get_driver_class.side_effect = lambda p: (drivers or {}).get(p)
+    # FIXED-JOINT: 与生产 DriverRegistry 语义对齐——端点用 normalize_protocol_key
+    # 得到的规范键（如 "opcua"）查询，而测试用例历史键为别名（如 "opc_ua"）。
+    # get_driver_class 对别名与规范键都返回同一驱动类，与真实注册表行为一致。
+    _alias_map = {"opc_ua": "opcua", "opc-da": "opc_da", "modbus-tcp": "modbus_tcp"}
+    _drivers = drivers or {}
+
+    def _get_driver_class(p):
+        # 双向解析：精确键命中，或规范键 p 对应的注册别名键（如 opcua→opc_ua）
+        if p in _drivers:
+            return _drivers[p]
+        for reg_key, canonical in _alias_map.items():
+            if canonical == p and reg_key in _drivers:
+                return _drivers[reg_key]
+        return None
+
+    reg.get_driver_class.side_effect = _get_driver_class
     reg.get_all_protocol_keys.return_value = protocol_keys or sorted((drivers or {}).keys())
     reg.get_load_status.return_value = load_status or {}
     reg.get_dependency_results.return_value = dep_results or {}
