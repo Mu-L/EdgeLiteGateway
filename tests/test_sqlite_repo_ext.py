@@ -257,8 +257,19 @@ class TestValidateDeviceConfig:
             _validate_device_config({"host": 123}, "modbus_tcp")
 
     def test_modbus_rtu_requires_serial_port(self):
-        with pytest.raises(ValueError, match="serial_port"):
+        # FIXED-JOINT: port 是串口路径（str）。无 tcp_gateway 时 serial_port/port 必填；
+        # 传 TCP 语义的整数端口按类型错误拒绝。
+        with pytest.raises(ValueError, match="serial device path"):
             _validate_device_config({"port": 1}, "modbus_rtu")
+        with pytest.raises(ValueError, match="serial_port"):
+            _validate_device_config({"port": None}, "modbus_rtu")
+
+    def test_modbus_rtu_tcp_gateway_exempts_serial_port(self):
+        # FIXED-JOINT: 串口服务器/TCP-RTU 网关模式允许省略串口路径
+        _validate_device_config(
+            {"tcp_gateway": {"host": "192.168.1.10", "port": 5021}, "baudrate": 9600},
+            "modbus_rtu",
+        )
 
     def test_modbus_rtu_valid(self):
         _validate_device_config(

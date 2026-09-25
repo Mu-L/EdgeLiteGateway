@@ -1,7 +1,7 @@
 {
-  "started_at": "2026-09-25T09:10:45.419218",
-  "finished_at": "2026-09-25T09:15:16.160990",
-  "passed": 14,
+  "started_at": "2026-09-25T14:09:35.262375",
+  "finished_at": "2026-09-25T14:14:09.502976",
+  "passed": 17,
   "failed": 0,
   "results": [
     {
@@ -73,6 +73,20 @@
         },
         "got": {
           "Temperature": 26.5
+        }
+      }
+    },
+    {
+      "phase": "A",
+      "device": "pf-rtu",
+      "check": "collect_match",
+      "pass": true,
+      "detail": {
+        "expected": {
+          "reg0": 2222
+        },
+        "got": {
+          "reg0": 2222.0
         }
       }
     },
@@ -178,6 +192,28 @@
       }
     },
     {
+      "phase": "B",
+      "device": "pf-rtu",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 777,
+        "wire_value": 777,
+        "error": null
+      }
+    },
+    {
+      "phase": "B",
+      "device": "pf-opcua",
+      "check": "write_readback",
+      "pass": true,
+      "detail": {
+        "wrote": 777,
+        "wire_value": 777,
+        "error": null
+      }
+    },
+    {
       "phase": "C",
       "device": [
         "pf-mc"
@@ -189,7 +225,7 @@
           "pf-mc": {
             "status_code": 200,
             "is_connected": false,
-            "consecutive_failures": 5
+            "consecutive_failures": 4
           }
         },
         "after_recover": {

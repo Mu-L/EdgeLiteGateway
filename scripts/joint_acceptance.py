@@ -179,6 +179,10 @@ class Client:
                         raw = resp.read().decode()
                         self.csrf = resp.headers.get("X-CSRF-Token") or self.csrf
                         return resp.status, (json.loads(raw) if raw else None)
+                except urllib.error.HTTPError:
+                    # FIXED: HTTPError 是 OSError 子类，必须先于网络异常拦截——
+                    # 4xx 业务错误重试没有意义（原实现把 400 当网络抖动重试 2 次）
+                    raise
                 except (TimeoutError, OSError) as net_err:
                     # FIXED: 高负载下偶发请求超时/连接抖动，指数退避重试而非整体崩溃
                     last_err = net_err

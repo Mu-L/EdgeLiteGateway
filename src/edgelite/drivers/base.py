@@ -1217,7 +1217,11 @@ class DriverPlugin(ABC):
                 # （联调实测：ERR_DEVICE_CONFIG_INVALID: Field 'port' must be an integer）。
                 declared_type = (self.config_schema.get("properties", {}).get(key, {}) or {}).get("type")
                 if declared_type == "string":
-                    if not str(config[key] or "").strip():
+                    # 串口路径（COM1 / /dev/ttyUSB0）——拒绝整数与纯数字串（几乎必然
+                    # 是调用方把 TCP 端口误配到串口字段），也拒绝空路径
+                    if isinstance(config[key], int) or (isinstance(config[key], str) and config[key].isdigit()):
+                        errors.append(f"Field '{key}' must be a serial device path, got {config[key]!r}")
+                    elif not str(config[key] or "").strip():
                         errors.append(f"Field '{key}' must be a non-empty device path")
                     continue
                 try:

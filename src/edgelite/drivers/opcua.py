@@ -958,6 +958,23 @@ class OpcUaDriver(DriverPlugin):
             logger.debug("Failed to read node data type for %s: %s", node_id, e)
             return "Unknown"
 
+    @staticmethod
+    def _variant_type_for(type_name: str) -> Any:
+        """FIXED-JOINT: 将节点数据类型名解析为 asyncua VariantType。
+
+        asyncua 的 write_value(纯 Python 值) 会把 int 默认推断为 Int64、float 推断为
+        Double，与节点实际类型（如 Int32/Float）不符时服务器返回 BadTypeMismatch。
+        写入必须携带与节点声明一致的显式 VariantType。
+        """
+        if not type_name or type_name == "Unknown":
+            return None
+        try:
+            from asyncua import ua as asyncua_ua
+
+            return getattr(asyncua_ua.VariantType, type_name, None)
+        except Exception:
+            return None
+
     async def _validate_write_type(
         self, client: Any, device_id: str, point: str, node_id: str, value: Any
     ) -> tuple[Any, bool]:
@@ -2325,7 +2342,13 @@ class OpcUaDriver(DriverPlugin):
         try:
             record_packet("tx", "opcua", device_id, f"Write: {node_id} = {validated}")
             node = client.get_node(node_id)
-            await asyncio.wait_for(node.write_value(validated), timeout=self._WRITE_TIMEOUT)
+            # FIXED-JOINT: 显式携带节点声明类型的 VariantType，防 asyncua 把 int/float
+            # 默认推断为 Int64/Double 导致 BadTypeMismatch（联调实测 Int32 节点写 400）
+            vt = self._variant_type_for(node_data_type)
+            if vt is not None:
+                await asyncio.wait_for(node.write_value(validated, vt), timeout=self._WRITE_TIMEOUT)
+            else:
+                await asyncio.wait_for(node.write_value(validated), timeout=self._WRITE_TIMEOUT)
         except TimeoutError:  # FIXED-P1: 兼容Python<3.11
             self._log_error(device_id, "WRITE_TIMEOUT", f"msg=Node write timeout {point} ({self._WRITE_TIMEOUT}s)")
             self._audit_write(device_id, point, node_id, node_data_type, old_value, validated, "timeout")
@@ -2401,7 +2424,14 @@ class OpcUaDriver(DriverPlugin):
                 logger.warning("OPC-UA batch read old value failed: %s", e, exc_info=True)
 
             nodes.append(client.get_node(node_id))
-            values_list.append(validated)
+            # FIXED-JOINT: 同单点写——批量路径同样必须携带显式 VariantType
+            vt = self._variant_type_for(node_data_type)
+            if vt is not None:
+                from asyncua import ua as asyncua_ua
+
+                values_list.append(asyncua_ua.Variant(validated, vt))
+            else:
+                values_list.append(validated)
             node_id_map[len(nodes) - 1] = point_name
             audit_entries.append((point_name, node_id, node_data_type, old_value, validated))
 

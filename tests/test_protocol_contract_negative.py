@@ -382,6 +382,10 @@ class TestDriverConfigValidationContract:
 
         result = driver.validate_config(config)
         assert result.valid is False
+        # FIXED-JOINT: modbus_rtu 的 port 是串口设备路径（schema 声明 string），
+        # 传入整数端口按"路径类型错误"拒绝（新校验尊重声明类型），其余驱动仍按
+        # TCP 端口范围校验拒绝。两种语义都满足"结构化错误"契约。
+        assert result.errors
         # 应在 errors 中提到 port 字段
         assert any("port" in e.lower() for e in result.errors), f"错误应包含 port: {result.errors}"
 

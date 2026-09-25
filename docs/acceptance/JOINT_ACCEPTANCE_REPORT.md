@@ -169,3 +169,46 @@ ProtoForge 侧：协议相关子集 86 passed；`test_edgelite_config_has_correc
    最终验收 14/14 全通过。
 4. `test_real_machine_joint` 的 EdgeLite 子进程与常驻实例共用 `data/logs/edgelite.log`
    导致日志轮转 PermissionError（Windows 多实例下，测试环境问题）。
+
+
+---
+
+## 附录三：协议覆盖总表（2026-09-25，第四轮）
+
+### A4. 结论
+
+**17/17 全部通过。** 验收矩阵扩展至 9 设备 10 链路；剩余两个驱动（opc_da/onvif）在本台架
+无对应模拟能力，已如实标注（见 C4）。
+
+| 南向协议 | 采集 | 下写 | 验证形态 |
+|---|---|---|---|
+| Modbus TCP | ✅ | ✅ 线上验证 | pymodbus 独立客户端 |
+| Modbus RTU（TCP-RTU 网关模式） | ✅ | ✅ 线上验证 | 网关拓扑：PF RTU TCP bridge ↔ EdgeLite tcp_gateway；独立 pymodbus 客户端 |
+| 西门子 S7 | ✅ | ✅ 线上验证 | python-snap7 |
+| 三菱 MC（Q/iQ-R） | ✅ | ✅ 线上验证 | pymcprotocol |
+| 欧姆龙 FINS | ✅ | ✅ 线上验证 | FINS 裸帧 |
+| 罗克韦尔 AB | ✅ | ✅ 线上验证 | pylogix |
+| MQTT client | ✅ 订阅 | —（订阅链路） | paho 独立订阅 |
+| OPC-UA | ✅ 订阅+直读 | ✅ 线上验证 | asyncua 独立客户端 |
+| HTTP Webhook | ✅ 推送接收 | —（被动链路） | push 端点→缓存→读回 |
+| Simulator | ✅（5 台常驻） | — | 连续采集 |
+| OPC DA | — | — | 本台架无 DCOM 模拟；PF 的"OPC-DA TCP 桥"与 EdgeLite 驱动的 DCOM 通道不可互操作，需真实 OPC DA 服务器环境 |
+| ONVIF | — | — | 台架无摄像头模拟；需真实网络摄像头 |
+
+### B4. 本轮修复（E15/E16，均为生产级阻塞缺陷）
+
+| # | 缺陷 | 影响 | 修复 |
+|---|---|---|---|
+| E15 | OPC-UA 写不带显式 VariantType：asyncua 把 Python int/float 默认推断为 Int64/Double，与节点声明类型（如 Int32）不符 → BadTypeMismatch → 写恒 400 | OPC-UA 下写全废 | 单点与批量写均按 `_read_node_data_type` 的节点实际类型携带显式 VariantType（`drivers/opcua.py`） |
+| E16 | 设备配置校验把所有协议的 `port` 一律按 TCP 端口整数校验；modbus_rtu 的 port 是串口路径（schema 声明 string）→ **RTU 设备无法通过 REST API 创建**；且 repo 层要求 serial_port 键与驱动 schema 的 port 键互相矛盾 | modbus_rtu 全协议被 API 层锁死 | 驱动基类与 sqlite_repo 校验器尊重 schema 声明类型：串口路径按字符串校验（拒绝整数/纯数字串/空），tcp_gateway（串口服务器）模式豁免串口路径（`drivers/base.py`、`storage/sqlite_repo.py`） |
+
+配套：验收脚本修正 HTTP 4xx 被误当网络错误重试的分类问题；契约测试按新语义更新
+（串口路径类型契约、网关豁免用例）。
+
+### C4. 部署注意事项
+
+1. **Modbus RTU TCP-RTU 网关**：本机验证时 EdgeLite modbus_slave 占用 `127.0.0.1:5021`
+   特定绑定，PF RTU 网桥绑 `0.0.0.0:5021`——回环连接优先命中特定绑定，须用 LAN IP 访问
+   网桥。生产部署应规划独立端口避免歧义。
+2. **OPC-UA 下写**：EdgeLite 设备点位的 data_type 需与服务器节点声明类型一致
+   （驱动按该类型发类型化写；类型不符会被 `_validate_write_type` 拒绝并审计）。
