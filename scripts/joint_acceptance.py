@@ -85,15 +85,21 @@ MATRIX: dict[str, dict] = {
         "wire_reader": ("pylogix", 44818, {"Setpoint": "Setpoint"}),
     },
     "pf-rtu": {
-        "pf": "pf-rtu", "protocol": "modbus_rtu",
+        "pf": "pf-rtu",
+        "protocol": "modbus_rtu",
         # FIXED-JOINT: TCP-RTU 网关（串口服务器）拓扑——无 com0com 串口对时，
         # ProtoForge RTU 服务端降级为 TCP bridge（0.0.0.0:5021；本机 EdgeLite
         # modbus_slave 占 127.0.0.1:5021 特定绑定，须用 LAN IP 命中网桥），
         # EdgeLite 走 tcp_gateway 模式，即现场"RTU 设备挂串口服务器"的标准形态。
         "collect_points": {"reg0": 2222},
         "write_point": ("reg0", 777),
-        "wire_reader": ("modbus", os.environ.get("EL_RTU_GATEWAY_HOST", "192.168.101.104"),
-                        5021, 1, {"reg0": ("hr", 0)}),
+        "wire_reader": (
+            "modbus",
+            os.environ.get("EL_RTU_GATEWAY_HOST", "192.168.101.104"),
+            5021,
+            1,
+            {"reg0": ("hr", 0)},
+        ),
     },
     "pf-mqtt": {
         "pf": "pf-mqtt",
@@ -107,8 +113,7 @@ MATRIX: dict[str, dict] = {
         "collect_points": {"motor_speed": 1500, "valve_open": True},
         # FIXED-JOINT: 驱动按设备配置 data_type(int32) 发类型化写，与台架节点类型匹配
         "write_point": ("motor_speed", 777),
-        "wire_reader": ("asyncua", "opc.tcp://127.0.0.1:4840/protoforge",
-                        {"motor_speed": "ns=2;s=motor_speed"}),
+        "wire_reader": ("asyncua", "opc.tcp://127.0.0.1:4840/protoforge", {"motor_speed": "ns=2;s=motor_speed"}),
     },
     "pf-http": {
         "pf": "pf-http",
@@ -467,6 +472,7 @@ def wire_read(reader: tuple, point: str):
 
         async def _ua_read():
             from asyncua import Client
+
             _, endpoint, tags = reader
             async with Client(url=endpoint) as c:
                 return await c.get_node(tags[point]).read_value()

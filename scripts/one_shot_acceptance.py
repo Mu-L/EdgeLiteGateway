@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """一键验收：预处理设备 -> 运行验收脚本。"""
+
 import json
 import os
 import subprocess
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 
 PF = "http://127.0.0.1:8000/api/v1"
 EL = "http://127.0.0.1:8180/api/v1"
@@ -86,14 +87,18 @@ el.login()
 # 1. 向 ProtoForge 写入特征值
 print("=== 1. 向 ProtoForge 写入特征值 ===")
 WRITE_SPECS = [
-    ("pf-modbus", "temp", 66.6), ("pf-modbus", "word1", 4321),
-    ("pf-s7", "temp", 12.5), ("pf-s7", "word1", 1000),
+    ("pf-modbus", "temp", 66.6),
+    ("pf-modbus", "word1", 4321),
+    ("pf-s7", "temp", 12.5),
+    ("pf-s7", "word1", 1000),
     ("pf-mc", "d0", 555),
     ("pf-fins", "w0", 1234),
     ("pf-ab", "Temperature", 26.5),
     ("pf-mqtt", "temp", 36.6),
-    ("pf-opcua", "motor_speed", 1500), ("pf-opcua", "valve_open", True),
-    ("pf-http", "temperature", 42.0), ("pf-http", "pressure", 1.5),
+    ("pf-opcua", "motor_speed", 1500),
+    ("pf-opcua", "valve_open", True),
+    ("pf-http", "temperature", 42.0),
+    ("pf-http", "pressure", 1.5),
 ]
 for dev_id, point, value in WRITE_SPECS:
     code, data = pf.put(f"/devices/{dev_id}/points/{point}", {"value": value})
@@ -112,7 +117,9 @@ time.sleep(10)
 print("\n=== 3. 重新创建 EdgeLite 设备 ===")
 RECREATE = {
     "pf-modbus": {
-        "device_id": "pf-modbus", "name": "PF Modbus TCP", "protocol": "modbus_tcp",
+        "device_id": "pf-modbus",
+        "name": "PF Modbus TCP",
+        "protocol": "modbus_tcp",
         "config": {"host": "127.0.0.1", "port": 5020, "slave_id": 5, "timeout": 5},
         "collect_interval": 5,
         "points": [
@@ -125,7 +132,9 @@ RECREATE = {
         ],
     },
     "pf-ab": {
-        "device_id": "pf-ab", "name": "PF AB", "protocol": "allen_bradley",
+        "device_id": "pf-ab",
+        "name": "PF AB",
+        "protocol": "allen_bradley",
         "config": {"ip": "127.0.0.1", "port": 44818, "timeout": 5},
         "collect_interval": 5,
         "points": [
@@ -134,7 +143,9 @@ RECREATE = {
         ],
     },
     "pf-opcua": {
-        "device_id": "pf-opcua", "name": "PF OPC UA", "protocol": "opcua",
+        "device_id": "pf-opcua",
+        "name": "PF OPC UA",
+        "protocol": "opcua",
         "config": {"endpoint": "opc.tcp://127.0.0.1:4840", "security_mode": "None", "timeout": 5},
         "collect_interval": 5,
         "points": [
@@ -143,23 +154,35 @@ RECREATE = {
         ],
     },
     "pf-mqtt": {
-        "device_id": "pf-mqtt", "name": "PF MQTT", "protocol": "mqtt_client",
+        "device_id": "pf-mqtt",
+        "name": "PF MQTT",
+        "protocol": "mqtt_client",
         "config": {
-            "broker": "127.0.0.1", "port": 1883,
+            "broker": "127.0.0.1",
+            "port": 1883,
             "subscribe_topic": "protoforge/#",
             "publish_topic": "protoforge/command",
             "client_id": "pf-mqtt-el9",
             "topic_prefix": "protoforge",
-            "retain": False, "qos": 0,
+            "retain": False,
+            "qos": 0,
         },
         "collect_interval": 5,
         "points": [
-            {"name": "temp", "data_type": "float32", "unit": "C", "address": "protoforge/pf-mqtt/temp", "access_mode": "rw"},
+            {
+                "name": "temp",
+                "data_type": "float32",
+                "unit": "C",
+                "address": "protoforge/pf-mqtt/temp",
+                "access_mode": "rw",
+            },
             {"name": "switch", "data_type": "float32", "address": "protoforge/pf-mqtt/switch", "access_mode": "rw"},
         ],
     },
     "pf-http": {
-        "device_id": "pf-http", "name": "PF HTTP", "protocol": "http_webhook",
+        "device_id": "pf-http",
+        "name": "PF HTTP",
+        "protocol": "http_webhook",
         "config": {"url": "http://127.0.0.1:8080/webhook/data", "method": "POST", "timeout": 10},
         "collect_interval": 5,
         "points": [

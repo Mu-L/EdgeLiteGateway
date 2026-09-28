@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """运行验收脚本的启动器（处理环境变量设置）。"""
+
 import os
 import subprocess
 import sys

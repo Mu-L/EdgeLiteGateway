@@ -98,7 +98,8 @@ def register_session(user_id: str, jti: str, expires_at: float | None = None) ->
             # 会话本进程内有效，重启后需重新登录——优于登录不可用。
             logger.warning(
                 "Failed to persist session for user %s (%s); degrading to in-memory session",
-                user_id, e,
+                user_id,
+                e,
             )
 
     # 内存注册: SQLite 成功后照常；SQLite 失败则降级为仅内存
@@ -276,7 +277,8 @@ async def revoke_old_sessions(user_id: str, new_jtis: list[str]) -> None:
             # 不阻断登录流程（否则负载下旧会话撤销/新会话持久化失败 → 登录后 401）
             logger.warning(
                 "Failed to revoke old sessions for user %s (%s); degrading to in-memory sessions",
-                user_id, e,
+                user_id,
+                e,
             )
 
     # 内存后: SQLite 成功后才更新 (用新会话集替换旧会话集)
