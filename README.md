@@ -24,6 +24,12 @@
 
 ---
 
+## ⚡ Go 社区版已发布
+
+对性能敏感、跑低配工控机/ARM 边缘盒子？试试 **[EdgeLiteGateway-Go](https://gitee.com/suoten/EdgeLiteGateway-Go)**（[GitHub](https://github.com/suoten/EdgeLiteGateway-Go)）——与 Python 版功能同级、同一套前端与 API，Go 协程并发采集，**单二进制部署，提供 linux amd64/arm64/armv7 预编译包，下载即用**。
+
+---
+
 ## EdgeLite 是什么？
 
 EdgeLite Gateway 是一个面向工业物联网场景的**开源边缘AI网关**。它不是传统网关——只搬运数据；而是在边缘侧完成**设备数据采集 → AI实时推理 → 视频联动确认**的完整闭环，让边缘节点真正会"思考"。
