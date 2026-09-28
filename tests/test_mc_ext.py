@@ -560,10 +560,12 @@ class TestPermissions:
         await d.set_user_role("admin")
         assert await d.check_permission(Permission.DEVICE_WRITE_POINT) is True
 
-    async def test_operator_cannot_write(self):
+    async def test_operator_can_write_point(self):
+        # FIXED-JOINT: 操作员已授予 DEVICE_WRITE_POINT（工业网关操作员核心职责就是写
+        # 设定值/启停命令；写路径有写策略、频率限制与审计三重保护）
         d = _make_driver()
         await d.set_user_role("operator")
-        assert await d.check_permission(Permission.DEVICE_WRITE_POINT) is False
+        assert await d.check_permission(Permission.DEVICE_WRITE_POINT) is True
 
     def test_check_rbac_admin(self):
         d = _make_driver()

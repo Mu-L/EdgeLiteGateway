@@ -110,18 +110,24 @@ class TestRegisterSessionAtomicity:
         # SQLite 也有 session
         assert _db_has_jti(db_path, "jti-1") is True
 
-    def test_register_rollback_on_sqlite_failure(self, db_path):
-        """SQLite 失败 → 内存不更新 (一致性优先)"""
+    def test_register_sqlite_failure_degrades_to_memory(self, db_path):
+        """FIXED-JOINT: SQLite 失败 → 降级为仅内存会话（登录可用性优先）。
+
+        原语义（一致性优先：内存不更新）导致高负载下 SQLite 短暂锁表时
+        登录返回的 token 立即失效，登录服务近乎不可用，已变更为降级模式：
+        会话本进程内有效，重启后需重新登录。
+        """
         with patch(
             "edgelite.security.session_manager.sqlite3.connect",
             side_effect=sqlite3.OperationalError("disk I/O error"),
         ):
             register_session("user1", "jti-1")
 
-        # 内存不应有该 session (直接检查内存结构, 非 is_session_active 的 fail-open)
+        # 内存降级注册成功
         with session_manager._lock:
-            assert "user1" not in session_manager._active_sessions
-        # SQLite 也不应有 (connect 失败)
+            assert "user1" in session_manager._active_sessions
+            assert "jti-1" in session_manager._active_sessions["user1"]
+        # SQLite 无该 session (connect 失败)
         assert _db_has_jti(db_path, "jti-1") is False
 
     def test_register_memory_mode_no_db(self, tmp_path):
@@ -293,8 +299,12 @@ class TestRevokeOldSessionsAtomicity:
         assert _db_has_jti(db_path, "old-jti") is False
         assert _db_has_jti(db_path, "new-jti") is True
 
-    async def test_revoke_rollback_on_sqlite_failure(self, db_path):
-        """SQLite 失败 → 内存不更新 (旧 session 仍活跃, 一致性优先)"""
+    async def test_revoke_sqlite_failure_degrades_to_memory(self, db_path):
+        """FIXED-JOINT: SQLite 失败 → 内存仍完成会话轮换（降级模式）。
+
+        原语义（一致性优先：内存不轮换）在负载下导致登录后 401，
+        已变更为降级：内存轮换照常执行，SQLite 侧维持失败前状态。
+        """
         register_session("user1", "old-jti")
 
         with patch(
@@ -303,14 +313,14 @@ class TestRevokeOldSessionsAtomicity:
         ):
             await revoke_old_sessions("user1", ["new-jti"])
 
-        # 内存: 旧 session 仍在 (未替换)
-        assert is_session_active("user1", "old-jti") is True
+        # 内存: 轮换完成（旧会话撤销、新会话生效）
+        assert is_session_active("user1", "new-jti") is True
         with session_manager._lock:
             sessions = session_manager._active_sessions.get("user1", set())
-            assert "old-jti" in sessions
-            assert "new-jti" not in sessions
+            assert "old-jti" not in sessions
+            assert "new-jti" in sessions
 
-        # SQLite: 旧 session 仍在 (未删除), 新 session 未插入
+        # SQLite: 维持失败前状态（旧 session 未删除，新 session 未插入）
         assert _db_has_jti(db_path, "old-jti") is True
         assert _db_has_jti(db_path, "new-jti") is False
 

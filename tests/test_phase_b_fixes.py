@@ -719,7 +719,8 @@ def test_protocol_keys_normalize_known_aliases():
     from edgelite.protocol_keys import normalize_protocol_key
 
     assert normalize_protocol_key("modbus-tcp") == "modbus_tcp"
-    assert normalize_protocol_key("opcua") == "opc_ua"
+    assert normalize_protocol_key("opcua") == "opcua"  # FIXED-OPCUA: opcua 为驱动 plugin_name 规范键
+    assert normalize_protocol_key("opc_ua") == "opc_ua"  # 仍为合法键（向后兼容旧 DB 记录，驱动层别名解析）
     assert normalize_protocol_key("s7") == "siemens_s7"
     assert normalize_protocol_key("ab") == "allen_bradley"
     assert normalize_protocol_key("modbus_tcp") == "modbus_tcp"  # 规范名直接返回

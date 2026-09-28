@@ -1085,7 +1085,8 @@ class TestDevicePoints:
         t = _make_client("operator")
         t.svc.get_device = AsyncMock(return_value=None)
         r = t.client.post("/api/v1/devices/dev-1/points", json={"point": "temp", "value": 30.0})
-        assert r.status_code == 403
+        # FIXED-JOINT: 操作员已有点位写权限 → 通过权限门禁后，设备不存在返回 404
+        assert r.status_code == 404
 
     def test_write_point_error(self):
         t = _make_client("admin")
