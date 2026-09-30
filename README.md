@@ -30,6 +30,22 @@
 
 ---
 
+## 🔗 关联开源项目
+
+同一作者维护的配套开源项目，覆盖边缘计算全链路——协议仿真、边缘 AI、零信任安全与视频接入：
+
+| 项目 | 简介 | Gitee | GitHub |
+|------|------|-------|--------|
+| **EdgeLiteGateway**（本项目） | Python 边缘 AI 网关：13 种协议采集 + ONNX 边缘推理 + 规则引擎 + 视频联动 | [Gitee](https://gitee.com/suoten/EdgeLiteGateway) | [GitHub](https://github.com/suoten/EdgeLiteGateway) |
+| **EdgeLiteGateway-Go** | Go 语言版边缘网关，功能与 Python 版同级，单二进制部署，性能更强 | [Gitee](https://gitee.com/suoten/EdgeLiteGateway-Go) | [GitHub](https://github.com/suoten/EdgeLiteGateway-Go) |
+| **ProtoForge** | 开源 PLC 协议仿真器，模拟多种工业协议设备，配合 EdgeLite 零硬件联调测试 | [Gitee](https://gitee.com/suoten/ProtoForge) | [GitHub](https://github.com/suoten/ProtoForge) |
+| **EdgeAgent Hub** | 工业边缘 AI 平台（Go）：ONNX 推理 + LLM + RAG + 多智能体编排 + 断网自治 + A/B 分区 OTA | [Gitee](https://gitee.com/suoten/edgeagent-hub) | [GitHub](https://github.com/suoten/EdgeAgent-Hub) |
+| **IoT-ZTNA** | IoT 零信任网络访问网关（Rust）：eBPF/XDP 线速过滤 + SPIFFE 设备身份 + AI 行为检测 | [Gitee](https://gitee.com/suoten/iot-ztna) | — |
+| **PyGBSentry** | GB28181 视频接入与 AI 识别平台，为 EdgeLite 提供"视觉确认"能力 | [Gitee](https://gitee.com/suoten/PyGBSentry) | [GitHub](https://github.com/suoten/PyGBSentry) |
+| **GBDoctor** | GB28181 接入诊断工具，生产环境快速定位摄像头/平台注册与流媒体问题 | [Gitee](https://gitee.com/suoten/GBDoctor) | [GitHub](https://github.com/suoten/GBDoctor) |
+
+---
+
 ## EdgeLite 是什么？
 
 EdgeLite Gateway 是一个面向工业物联网场景的**开源边缘AI网关**。它不是传统网关——只搬运数据；而是在边缘侧完成**设备数据采集 → AI实时推理 → 视频联动确认**的完整闭环，让边缘节点真正会"思考"。

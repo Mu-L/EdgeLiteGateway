@@ -24,6 +24,22 @@
 
 ***
 
+## 🔗 Related Open-Source Projects
+
+Companion open-source projects maintained by the same author, covering the full edge-computing stack — protocol simulation, edge AI, zero-trust security, and video access:
+
+| Project | Description | Gitee | GitHub |
+|---------|-------------|-------|--------|
+| **EdgeLiteGateway** (this repo) | Python edge AI gateway: 13-protocol collection + ONNX edge inference + rule engine + video linkage | [Gitee](https://gitee.com/suoten/EdgeLiteGateway) | [GitHub](https://github.com/suoten/EdgeLiteGateway) |
+| **EdgeLiteGateway-Go** | Go edition of the gateway — same features as the Python edition, single-binary deployment, higher performance | [Gitee](https://gitee.com/suoten/EdgeLiteGateway-Go) | [GitHub](https://github.com/suoten/EdgeLiteGateway-Go) |
+| **ProtoForge** | Open-source PLC protocol simulator — emulate industrial devices for hardware-free integration testing with EdgeLite | [Gitee](https://gitee.com/suoten/ProtoForge) | [GitHub](https://github.com/suoten/ProtoForge) |
+| **EdgeAgent Hub** | Industrial edge AI platform (Go): ONNX inference + LLM + RAG + multi-agent orchestration + offline autonomy + A/B partition OTA | [Gitee](https://gitee.com/suoten/edgeagent-hub) | [GitHub](https://github.com/suoten/EdgeAgent-Hub) |
+| **IoT-ZTNA** | IoT Zero-Trust Network Access gateway (Rust): eBPF/XDP line-rate filtering + SPIFFE device identity + AI behavior detection | [Gitee](https://gitee.com/suoten/iot-ztna) | — |
+| **PyGBSentry** | GB28181 video access & AI recognition platform, providing "visual confirmation" for EdgeLite | [Gitee](https://gitee.com/suoten/PyGBSentry) | [GitHub](https://github.com/suoten/PyGBSentry) |
+| **GBDoctor** | GB28181 access diagnostics tool — quickly pinpoint camera/platform registration and streaming issues in production | [Gitee](https://gitee.com/suoten/GBDoctor) | [GitHub](https://github.com/suoten/GBDoctor) |
+
+***
+
 ## What is EdgeLite?
 
 EdgeLite Gateway is an **open-source edge AI gateway** designed for industrial IoT scenarios. It's not a traditional gateway that merely forwards data — it completes the full closed loop of **device data collection → real-time AI inference → video-linked confirmation** at the edge, making edge nodes truly "think."
